@@ -15,7 +15,7 @@ public class ServerSafety {
         "https://raw.githubusercontent.com/stfulua/sparrow-bfsl/main/features-server-block.json";
 
     private static final Map<String, Set<String>> LOCAL_FALLBACK = Map.of(
-        "minemen", Set.of("better-movement", "click-relay", "shield-desync-fix")
+        "minemen", Set.of("click-relay", "shield-desync-fix")
     );
 
     private static String lastHost;

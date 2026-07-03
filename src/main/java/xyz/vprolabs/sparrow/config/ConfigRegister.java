@@ -12,13 +12,13 @@ import java.util.Map;
  *
  * Usage:
  *   // Read
- *   if (ConfigRegister.smoothElytra.get()) { ... }
+ *   if (ConfigRegister.fireTimer.get()) { ... }
  *   float z = ConfigRegister.viewModelZ.get();
  *   int r = ConfigRegister.glintR.get();
  *   String mode = ConfigRegister.particleMode.get();
  *
  *   // Write
- *   ConfigRegister.smoothElytra.set(true);
+ *   ConfigRegister.fireTimer.set(true);
  */
 public final class ConfigRegister {
 
@@ -197,10 +197,6 @@ public final class ConfigRegister {
 
     // ── Tweaks ────────────────────────────────────────────────────────
     public static final Toggle clickQueue = new Toggle("click-relay", "Tweaks", false);
-
-    // ── Movement ──────────────────────────────────────────────────────
-    public static final Toggle smoothElytra      = new Toggle("smooth-elytra", "Movement", false);
-    public static final Toggle betterMovement    = new Toggle("better-movement", "Movement", false);
 
     // ── World ─────────────────────────────────────────────────────────
     public static final Toggle fullbright        = new Toggle("fullbright", "World", false);

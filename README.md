@@ -111,7 +111,6 @@
 <summary><b>⌨️ Movement & Input</b></summary>
 
 - **Toggle Sneak** — toggle-crouch with intelligent interaction bypass (open chests while sneaking).
-- **Better Movement** — priority-based WASD conflict resolution (last-pressed wins).
 - **Smooth Elytra** — auto-stops elytra gliding on ground contact.
 - **Click Relay** — queues item use clicks during cooldown, auto-executes when ready. Prevents missed pearls/food on slot switch.
 - **Mouse Scroll** — scroll wheel customization for zoom and inventory interactions.
@@ -175,8 +174,7 @@ Most toggles accept `on` / `off` as argument. Omitting the argument flips the cu
 **Visual settings** (11):
 `view-x`, `view-y`, `view-z`, `view-size`, `utility-scale`, `glint-r`, `glint-g`, `glint-b`, `fire-timer-pos`, `particles`, `block-lod-mode`
 
-**Movement** (2):
-`smooth-elytra`, `better-movement`
+**Movement** (0):
 
 **Tweaks** (1):
 `click-relay`
