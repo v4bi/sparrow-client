@@ -208,8 +208,8 @@ To request server-specific feature blocking, contact us on Discord.
 ### Building
 
 ```bash
-gradle build                          # full build (ProGuard obfuscation)
-gradle build -PdevMode=true           # dev build (no obfuscation, fast)
+gradle build                          # full build
+gradle build -PdevMode=true           # dev build (faster)
 ```
 
 Output: `client/build/libs/SparrowClient-Fabric-1.21.11.jar`
