@@ -1,26 +1,119 @@
-name: Build
+name: Build & Release
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
+    name: Build JAR
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-java@v4
         with:
           java-version: 21
           distribution: temurin
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
       - name: Build
-        run: gradle build
-      - name: Upload artifact
+        run: gradle build --warning-mode all --no-daemon
+
+      - name: Locate final JAR
+        id: jar
+        run: |
+          set -e
+          JAR=$(find build/libs -name 'SparrowClient-*.jar' \
+              ! -name '*-enc.jar' ! -name '*-sources.jar' \
+              -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          if [ -z "$JAR" ]; then
+            echo "::error::No SparrowClient JAR found in build/libs/"
+            exit 1
+          fi
+          echo "jar_path=$JAR" >> "$GITHUB_OUTPUT"
+          echo "jar_name=$(basename "$JAR")" >> "$GITHUB_OUTPUT"
+          echo "Final JAR: $JAR"
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SparrowClient
-          path: build/libs/SparrowClient-*.jar
+          name: SparrowClient-Fabric-1.21.11
+          path: ${{ steps.jar.outputs.jar_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SparrowClient-Fabric-1.21.11
+          path: dist
+
+      - name: Locate downloaded JAR
+        id: jar
+        run: |
+          set -e
+          JAR=$(find dist -name 'SparrowClient-*.jar' \
+              ! -name '*-enc.jar' ! -name '*-sources.jar' | head -1)
+          if [ -z "$JAR" ]; then
+            echo "::error::Downloaded artifact missing the JAR"
+            exit 1
+          fi
+          echo "jar_path=$JAR" >> "$GITHUB_OUTPUT"
+          echo "JAR: $JAR"
+
+      - name: Read build tag from manifest
+        id: tag
+        run: |
+          set -e
+          TAG=$(unzip -p "${{ steps.jar.outputs.jar_path }}" META-INF/MANIFEST.MF \
+              | grep '^Build-Tag:' | awk '{print $2}' | tr -d '\r')
+          if [ -z "$TAG" ]; then
+            echo "::error::Could not read Build-Tag from JAR manifest"
+            exit 1
+          fi
+          echo "build_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Build tag: $TAG"
+
+      - name: Update version.txt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf '%s\n' "${{ steps.tag.outputs.build_tag }}" > version.txt
+          git add version.txt
+          if git diff --cached --quiet; then
+            echo "version.txt already up to date"
+          else
+            git commit -m "Release ${{ steps.tag.outputs.build_tag }}"
+            git push
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Sparrow Client ${{ steps.tag.outputs.build_tag }}
+          body: |
+            Build `${{ steps.tag.outputs.build_tag }}` for Minecraft **1.21.11 (Fabric)**.
+
+            Drop `SparrowClient-Fabric-1.21.11.jar` into your `mods/` folder.
+          files: ${{ steps.jar.outputs.jar_path }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
