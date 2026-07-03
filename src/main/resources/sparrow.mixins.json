@@ -13,7 +13,6 @@
     "Bugfix.PalettedContainerSafetyMixin",
     "Bugfix.InventoryDesyncFixMixin",
     "Bugfix.RubberbandRecoveryMixin",
-    "Bugfix.BlockResyncMixin",
     "Bugfix.ChunkBuilderStoppedResetMixin",
     "Bugfix.GhostBlockDetectMixin",
     "Bugfix.SprintFovSmoothingMixin",
