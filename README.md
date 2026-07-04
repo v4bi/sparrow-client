@@ -86,10 +86,9 @@
 </details>
 
 <details open>
-<summary><b>🔧 Bug Fixes</b> (16 fixes)</summary>
+<summary><b>🔧 Bug Fixes</b> (14 fixes)</summary>
 
 - **Sprint FOV Smoothing** — fixes MC-20302 (jumpy FOV on sprint toggle).
-- **Diagonal Movement Fix** — normalizes diagonal sneak speed (MC-271065 revert).
 - **Shield Desync Fix** — auto-resync shield when right-click doesn't register server-side.
 - **Shield Visibility** — properly displays shield in third-person player model.
 - **Block Resync** — periodic block state sync to prevent ghost blocks.
@@ -99,7 +98,6 @@
 - **Knockback Predictor** — predicts knockback for accurate hit confirmation.
 - **Packet Error Ignore** — suppresses benign network errors that would disconnect you.
 - **Paletted Container Fix** — prevents world corruption from palette bugs (MC-267913, MC-269572).
-- **Sprint Reset Fix** — prevents sprint from dropping incorrectly.
 - **Double Consume Fix** — prevents eating/drinking twice from a single click.
 - **Portal GUI Unlock** — allows interacting with containers while inside a nether portal.
 - **Creative Feature Unlock** — enables operations on non-OP singleplayer worlds.

@@ -17,7 +17,6 @@
     "Bugfix.GhostBlockDetectMixin",
     "Bugfix.SprintFovSmoothingMixin",
     "Bugfix.ShieldVisibilityMixin",
-    "Bugfix.DiagonalMovementFixMixin",
     "Bugfix.ShieldDesyncFixMixin",
     "Bugfix.KnockbackPredictorMixin",
     "Bugfix.PacketErrorIgnoreMixin",
