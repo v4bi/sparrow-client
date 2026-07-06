@@ -54,10 +54,8 @@ public final class FeatureRegistry {
 					return "\u00a7cUse on/off for '" + name + "'";
 				}
 				boolean cur = getter.getAsBoolean();
-				setter.accept(!cur);
-				save();
-				boolean after = getter.getAsBoolean();
-				return "\u00a77" + name + ": " + (after ? "\u00a7aON" : "\u00a7cOFF");
+				return "\u00a77" + name + ": " + (cur ? "\u00a7aON" : "\u00a7cOFF")
+					+ " \u00a77(Use on/off to toggle)\u00a77";
 			}
 			@Override public String getDescription() { return "Toggle " + name; }
 			@Override public List<String> tabComplete(String[] args) {
@@ -123,7 +121,8 @@ public final class FeatureRegistry {
 			"view-x", "view-y", "view-z", "view-size", "utility-scale",
 			"zoom", "zoom-smoothness", "zoom-min", "zoom-max",
 			"fire-timer", "fire-timer-pos",
-			"particles", "block-lod-mode", "movehud"
+			"particles", "block-lod-mode", "movehud",
+			"crosshair", "crosshair-color"
 		);
 
 		for (ConfigRegister.Entry e : ConfigRegister.getAll()) {
@@ -152,6 +151,7 @@ public final class FeatureRegistry {
 		registerParticlesCmd();
 		registerBlockLodCmd();
 		registerSneakCmd();
+		registerCrosshairCmd();
 		registerMoveHudCmd();
 	}
 
@@ -489,9 +489,8 @@ public final class FeatureRegistry {
 					}
 					return "\u00a7cUse on/off for 'sneak'";
 				}
-				ToggleSneakState.toggle();
-				save();
-				return "\u00a77sneak: " + (ToggleSneakState.enabled ? "\u00a7aON" : "\u00a7cOFF");
+				return "\u00a77sneak: " + (ToggleSneakState.enabled ? "\u00a7aON" : "\u00a7cOFF")
+					+ " \u00a77(Use on/off to toggle)\u00a77";
 			}
 			@Override public String getDescription() { return "Toggle-sneak"; }
 			@Override public List<String> tabComplete(String[] args) {
@@ -499,6 +498,104 @@ public final class FeatureRegistry {
 				return Collections.emptyList();
 			}
 		});
+	}
+
+	// ── crosshair ────────────────────────────────────────────────────
+
+	private static void registerCrosshairCmd() {
+		SparrowConsoleCommand.register("crosshair", new SparrowConsoleCommand.Command() {
+			@Override public String execute(String[] args) {
+				if (args.length < 2) {
+					String type = ConfigRegister.crosshair.get();
+					String color = ConfigRegister.crosshairColor.get();
+					return "\u00a77crosshair: " + (type.equals("off") ? "\u00a7cOFF" : "\u00a7aON")
+						+ "\u00a77 type=" + type + " \u00a77color=#" + color
+						+ "\u00a77 (Usage: crosshair [on|off|type|color] [value])\u00a77";
+				}
+				String sub = args[1].toLowerCase(Locale.ROOT);
+				switch (sub) {
+				case "on":
+					if (ConfigRegister.crosshair.get().equals("off"))
+						ConfigRegister.crosshair.set("heart");
+					save();
+					return "\u00a77crosshair: \u00a7aON \u00a77type=" + ConfigRegister.crosshair.get();
+				case "off":
+					ConfigRegister.crosshair.set("off");
+					save();
+					return "\u00a77crosshair: \u00a7cOFF";
+				case "type":
+					if (args.length < 3)
+						return "\u00a7cUsage: crosshair type [heart|tiny|dot|x|clover]";
+					{
+						String v = args[2].toLowerCase(Locale.ROOT);
+						if (v.equals("heart") || v.equals("tiny") || v.equals("dot") || v.equals("x") || v.equals("clover")) {
+							ConfigRegister.crosshair.set(v);
+							save();
+							return "\u00a77crosshair type: \u00a7f" + v;
+						}
+						return "\u00a7cInvalid type. Options: heart, tiny, dot, x, clover";
+					}
+				case "color":
+					if (args.length < 3)
+						return "\u00a7cUsage: crosshair color [255,255,255 | 255.255.255 | 255255255 | ff0000]";
+					{
+						String raw = args[2];
+						String canon = normalizeCrosshairColor(raw);
+						if (canon == null)
+							return "\u00a7cInvalid color format. Use: 255,255,255 | 255.255.255 | 255255255 | ff0000";
+						ConfigRegister.crosshairColor.set(canon);
+						ConfigRegister.crosshair.set("heart");
+						save();
+						return "\u00a77crosshair color: \u00a7f#" + canon;
+					}
+				default:
+					return "\u00a7cUsage: crosshair [on|off|type|color] [value]";
+				}
+			}
+			@Override public String getDescription() { return "Custom crosshair type and color"; }
+			@Override public List<String> tabComplete(String[] args) {
+				if (args.length == 2) return Arrays.asList("on", "off", "type", "color");
+				if (args.length == 3 && args[1].equalsIgnoreCase("type"))
+					return Arrays.asList("heart", "tiny", "dot", "x", "clover");
+				return Collections.emptyList();
+			}
+		});
+	}
+
+	private static String normalizeCrosshairColor(String raw) {
+		if (raw == null) return null;
+		String s = raw.trim().replace("#", "").replace("0x", "");
+		int r, g, b;
+		try {
+			if (s.contains(",")) {
+				String[] p = s.split(",");
+				if (p.length != 3) return null;
+				r = Integer.parseInt(p[0].trim());
+				g = Integer.parseInt(p[1].trim());
+				b = Integer.parseInt(p[2].trim());
+			} else if (s.contains(".")) {
+				String[] p = s.split("\\.");
+				if (p.length != 3) return null;
+				r = Integer.parseInt(p[0].trim());
+				g = Integer.parseInt(p[1].trim());
+				b = Integer.parseInt(p[2].trim());
+			} else if (s.length() == 9 && s.matches("\\d{9}")) {
+				r = Integer.parseInt(s.substring(0, 3));
+				g = Integer.parseInt(s.substring(3, 6));
+				b = Integer.parseInt(s.substring(6, 9));
+			} else if (s.matches("[0-9a-fA-F]{6}")) {
+				int rgb = Integer.parseInt(s, 16);
+				r = (rgb >> 16) & 0xFF;
+				g = (rgb >> 8) & 0xFF;
+				b = rgb & 0xFF;
+			} else {
+				return null;
+			}
+			if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) return null;
+			return String.format("%02x%02x%02x", r, g, b);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	// ── movehud ────────────────────────────────────────────────────────

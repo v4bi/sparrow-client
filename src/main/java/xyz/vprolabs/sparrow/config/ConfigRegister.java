@@ -184,6 +184,8 @@ public final class ConfigRegister {
     public static final Toggle shieldStatus     = new Toggle("shield-status", "Visual", false);
 
     // ── Visual float/int/string settings ──────────────────────────────
+    public static final StringEntry crosshair     = new StringEntry("crosshair", "Visual", "off");
+    public static final StringEntry crosshairColor = new StringEntry("crosshair-color", "Visual", "ffffff");
     public static final SetEntry viewModelX      = new SetEntry("view-x", "Visual", 0.0f);
     public static final SetEntry viewModelY      = new SetEntry("view-y", "Visual", 0.0f);
     public static final SetEntry viewModelZ      = new SetEntry("view-z", "Visual", 0.0f);

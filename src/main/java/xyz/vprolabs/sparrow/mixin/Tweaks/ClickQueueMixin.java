@@ -26,6 +26,9 @@ public class ClickQueueMixin {
     private boolean sparrow_inClickReplay = false;
 
     @Unique
+    private int sparrow_lastInteractionTick = -1;
+
+    @Unique
     private static boolean sparrow_isUtilityItem(ItemStack stack) {
         if (stack.isEmpty()) return false;
         var item = stack.getItem();
@@ -45,12 +48,17 @@ public class ClickQueueMixin {
 
         // Replay queued click when cooldown expires
         if (ClickQueueState.shouldReplay() && cooldown == 0 && !client.player.isUsingItem()) {
-            ClickQueueState.clear();
             if (!client.player.getMainHandStack().isEmpty()) {
-                client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                ((MinecraftClientAccessor) client).setItemUseCooldown(4);
-                return;
+                if (client.player.age - sparrow_lastInteractionTick >= 2) {
+                    ClickQueueState.clear();
+                    client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                    sparrow_lastInteractionTick = client.player.age;
+                    ((MinecraftClientAccessor) client).setItemUseCooldown(4);
+                }
+            } else {
+                ClickQueueState.clear();
             }
+            return;
         }
 
         boolean keyPressed = client.options.useKey.wasPressed();
@@ -81,9 +89,12 @@ public class ClickQueueMixin {
         if (client.player.getMainHandStack().isEmpty()) return;
         if (!sparrow_isUtilityItem(client.player.getMainHandStack())) return;
 
+        if (client.player.age - sparrow_lastInteractionTick < 2) return;
+
         sparrow_inClickReplay = true;
         try {
             client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+            sparrow_lastInteractionTick = client.player.age;
         } finally {
             sparrow_inClickReplay = false;
             ClickQueueState.clear();
