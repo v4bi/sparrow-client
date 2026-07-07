@@ -122,8 +122,9 @@ public final class FeatureRegistry {
 			"zoom", "zoom-smoothness", "zoom-min", "zoom-max",
 			"fire-timer", "fire-timer-pos",
 			"particles", "block-lod-mode", "movehud",
-			"crosshair", "crosshair-color"
-		);
+            "crosshair", "crosshair-color",
+            "player-hit", "player-hit-type", "player-hit-color"
+        );
 
 		for (ConfigRegister.Entry e : ConfigRegister.getAll()) {
 			if (groupedNames.contains(e.name())) continue;
@@ -152,6 +153,7 @@ public final class FeatureRegistry {
 		registerBlockLodCmd();
 		registerSneakCmd();
 		registerCrosshairCmd();
+		registerPlayerHitCmd();
 		registerMoveHudCmd();
 	}
 
@@ -516,7 +518,7 @@ public final class FeatureRegistry {
 				switch (sub) {
 				case "on":
 					if (ConfigRegister.crosshair.get().equals("off"))
-						ConfigRegister.crosshair.set("heart");
+						ConfigRegister.crosshair.set("plus");
 					save();
 					return "\u00a77crosshair: \u00a7aON \u00a77type=" + ConfigRegister.crosshair.get();
 				case "off":
@@ -528,12 +530,13 @@ public final class FeatureRegistry {
 						return "\u00a7cUsage: crosshair type [heart|tiny|dot|x|clover]";
 					{
 						String v = args[2].toLowerCase(Locale.ROOT);
-						if (v.equals("heart") || v.equals("tiny") || v.equals("dot") || v.equals("x") || v.equals("clover")) {
+						if (v.equals("default")) v = "plus";
+						if (v.equals("heart") || v.equals("tiny") || v.equals("dot") || v.equals("x") || v.equals("clover") || v.equals("plus")) {
 							ConfigRegister.crosshair.set(v);
 							save();
 							return "\u00a77crosshair type: \u00a7f" + v;
 						}
-						return "\u00a7cInvalid type. Options: heart, tiny, dot, x, clover";
+						return "\u00a7cInvalid type. Options: heart, tiny, dot, x, clover, plus";
 					}
 				case "color":
 					if (args.length < 3)
@@ -554,9 +557,9 @@ public final class FeatureRegistry {
 			}
 			@Override public String getDescription() { return "Custom crosshair type and color"; }
 			@Override public List<String> tabComplete(String[] args) {
-				if (args.length == 2) return Arrays.asList("on", "off", "type", "color");
-				if (args.length == 3 && args[1].equalsIgnoreCase("type"))
-					return Arrays.asList("heart", "tiny", "dot", "x", "clover");
+			if (args.length == 2) return Arrays.asList("on", "off", "type", "color");
+			if (args.length == 3 && args[1].equalsIgnoreCase("type"))
+				return Arrays.asList("heart", "tiny", "dot", "x", "clover", "plus", "default");
 				return Collections.emptyList();
 			}
 		});
@@ -579,10 +582,10 @@ public final class FeatureRegistry {
 				r = Integer.parseInt(p[0].trim());
 				g = Integer.parseInt(p[1].trim());
 				b = Integer.parseInt(p[2].trim());
-			} else if (s.length() == 9 && s.matches("\\d{9}")) {
-				r = Integer.parseInt(s.substring(0, 3));
-				g = Integer.parseInt(s.substring(3, 6));
-				b = Integer.parseInt(s.substring(6, 9));
+			} else if (s.matches("\\d{3,9}")) {
+				int[] rgb = parseDecimalRgb(s);
+				if (rgb == null) return null;
+				r = rgb[0]; g = rgb[1]; b = rgb[2];
 			} else if (s.matches("[0-9a-fA-F]{6}")) {
 				int rgb = Integer.parseInt(s, 16);
 				r = (rgb >> 16) & 0xFF;
@@ -596,6 +599,91 @@ public final class FeatureRegistry {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	private static int[] parseDecimalRgb(String s) {
+		int len = s.length(), ptr = 0;
+		int[] rgb = new int[3];
+		try {
+			for (int comp = 0; comp < 3; comp++) {
+				if (ptr >= len) { rgb[comp] = 0; continue; }
+				if (s.charAt(ptr) == '0') {
+					rgb[comp] = 0; ptr++;
+				} else {
+					int remaining = len - ptr;
+					int remainingComps = 2 - comp;
+					int maxTake = remainingComps > 0 ? Math.min(3, remaining - remainingComps) : Math.min(3, remaining);
+					if (maxTake < 1) maxTake = remaining - remainingComps;
+					int end = Math.min(ptr + maxTake, len);
+					rgb[comp] = Integer.parseInt(s.substring(ptr, end));
+					ptr = end;
+				}
+			}
+			for (int v : rgb) if (v < 0 || v > 255) return null;
+			return rgb;
+		} catch (NumberFormatException e) { return null; }
+	}
+
+	// ── playerhit ──────────────────────────────────────────────────────
+
+	private static void registerPlayerHitCmd() {
+		SparrowConsoleCommand.register("playerhit", new SparrowConsoleCommand.Command() {
+			@Override public String execute(String[] args) {
+				if (args.length < 2) {
+					String onoff = ConfigRegister.playerHit.get() ? "\u00a7aON" : "\u00a7cOFF";
+					return "\u00a77playerhit: " + onoff
+						+ " \u00a77type=" + ConfigRegister.playerHitType.get()
+						+ " \u00a77color=#" + ConfigRegister.playerHitColor.get()
+						+ "\u00a77 (Usage: playerhit [on|off|type|color] [value])\u00a77";
+				}
+				String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+				switch (sub) {
+				case "on":
+					ConfigRegister.playerHit.set(true);
+					save();
+					return "\u00a77player-hit: \u00a7aON";
+				case "off":
+					ConfigRegister.playerHit.set(false);
+					save();
+					return "\u00a77player-hit: \u00a7cOFF";
+				case "type":
+					if (args.length < 3) return "\u00a7cUsage: playerhit type [hit|abletohit]";
+					{
+						String v = args[2].toLowerCase(java.util.Locale.ROOT);
+						if (v.equals("hit") || v.equals("abletohit")) {
+							ConfigRegister.playerHitType.set(v);
+							save();
+							return "\u00a77player-hit type: \u00a7f" + v;
+						}
+						return "\u00a7cInvalid type. Options: hit, abletohit";
+					}
+				case "color":
+					if (args.length < 3) return "\u00a7cUsage: playerhit color <hex>";
+					{
+						String raw = args[2];
+						String canon = normalizePlayerHitColor(raw);
+						if (canon == null)
+							return "\u00a7cInvalid color. Use hex like ff0000 (red) or ff6666";
+						ConfigRegister.playerHitColor.set(canon);
+						save();
+						return "\u00a77player-hit color: \u00a7f#" + canon;
+					}
+				default:
+					return "\u00a7cUsage: playerhit [on|off|type|color] [value]";
+				}
+			}
+			@Override public String getDescription() { return "Player hit color overlay"; }
+			@Override public java.util.List<String> tabComplete(String[] args) {
+				if (args.length == 2) return java.util.Arrays.asList("on", "off", "type", "color");
+				if (args.length == 3 && args[1].equalsIgnoreCase("type"))
+					return java.util.Arrays.asList("hit", "abletohit");
+				return java.util.Collections.emptyList();
+			}
+		});
+	}
+
+	private static String normalizePlayerHitColor(String raw) {
+		return xyz.vprolabs.sparrow.util.ColorUtil.normalizeHex(raw);
 	}
 
 	// ── movehud ────────────────────────────────────────────────────────

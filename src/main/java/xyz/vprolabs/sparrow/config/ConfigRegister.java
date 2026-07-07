@@ -196,6 +196,9 @@ public final class ConfigRegister {
     public static final IntEntry glintB          = new IntEntry("glint-b", "Visual", 0);
     public static final StringEntry fireTimerPos = new StringEntry("fire-timer-pos", "Visual", "BOTTOM_CENTER");
     public static final StringEntry particleMode = new StringEntry("particles", "Visual", "off");
+    public static final Toggle playerHit           = new Toggle("player-hit", "Visual", false);
+    public static final StringEntry playerHitType  = new StringEntry("player-hit-type", "Visual", "hit");
+    public static final StringEntry playerHitColor = new StringEntry("player-hit-color", "Visual", "ff0000");
 
     // ── Tweaks ────────────────────────────────────────────────────────
     public static final Toggle clickQueue = new Toggle("click-relay", "Tweaks", false);

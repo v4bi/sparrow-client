@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow;
 
 import xyz.vprolabs.sparrow.BuildInfo;
+import xyz.vprolabs.sparrow.config.ModCompatibilityChecker;
 import xyz.vprolabs.sparrow.config.SodiumCompat;
 import xyz.vprolabs.sparrow.console.SparrowConsolePlugin;
 import xyz.vprolabs.sparrow.crash.SparrowCrashHandler;
@@ -61,6 +62,7 @@ public class SparrowMod implements ClientModInitializer {
     public void onInitializeClient() {
         SparrowLogger.init();
         SodiumCompat.init();
+        ModCompatibilityChecker.check();
         SparrowCrashHandler.register();
         SparrowLogger.info("=== Sparrow Mod " + BuildInfo.BUILD_TAG + " initializing ===");
         SparrowLogger.info("Java: " + System.getProperty("java.version"));

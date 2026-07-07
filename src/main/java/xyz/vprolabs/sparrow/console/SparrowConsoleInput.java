@@ -46,11 +46,19 @@ public class SparrowConsoleInput {
 				return true;
 
 			case GLFW.GLFW_KEY_UP:
+				if (!SparrowConsoleState.suggestions.isEmpty()) {
+					navigateSuggestion(-1);
+					return true;
+				}
 				navigateHistory(-1);
 				updateSuggestions();
 				return true;
 
 			case GLFW.GLFW_KEY_DOWN:
+				if (!SparrowConsoleState.suggestions.isEmpty()) {
+					navigateSuggestion(1);
+					return true;
+				}
 				navigateHistory(1);
 				updateSuggestions();
 				return true;
@@ -140,9 +148,10 @@ public class SparrowConsoleInput {
 		List<String> completions = computeCompletions();
 		SparrowConsoleState.suggestions.clear();
 		if (!completions.isEmpty()) {
-			int count = Math.min(3, completions.size());
+			int count = Math.min(5, completions.size());
 			SparrowConsoleState.suggestions.addAll(completions.subList(0, count));
 		}
+		SparrowConsoleState.suggestionIndex = SparrowConsoleState.suggestions.isEmpty() ? -1 : 0;
 	}
 
 	private static List<String> computeCompletions() {
@@ -179,7 +188,15 @@ public class SparrowConsoleInput {
 		}
 	}
 
-	// ── Tab completion (picks first suggestion) ──────────────────────
+	private static void navigateSuggestion(int direction) {
+		int size = SparrowConsoleState.suggestions.size();
+		int idx = SparrowConsoleState.suggestionIndex + direction;
+		if (idx < 0) idx = size - 1;
+		if (idx >= size) idx = 0;
+		SparrowConsoleState.suggestionIndex = idx;
+	}
+
+	// ── Tab completion (picks selected suggestion) ──────────────────
 
 	private static void tabComplete() {
 		String current = SparrowConsoleState.inputBuffer.toString();
@@ -225,6 +242,15 @@ public class SparrowConsoleInput {
 		}
 
 		if (completions.isEmpty()) return;
+		if (!SparrowConsoleState.suggestions.isEmpty()) {
+			int idx = Math.max(0, SparrowConsoleState.suggestionIndex);
+			String completed = SparrowConsoleState.suggestions.get(idx);
+			SparrowConsoleState.inputBuffer.setLength(0);
+			SparrowConsoleState.inputBuffer.append(prefixToReplace).append(completed).append(" ");
+			SparrowConsoleState.cursorPos = SparrowConsoleState.inputBuffer.length();
+			SparrowConsoleState.suggestions.clear();
+			return;
+		}
 
 		String completed = completions.get(0);
 		SparrowConsoleState.inputBuffer.setLength(0);

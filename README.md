@@ -7,9 +7,11 @@
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://www.oracle.com/java/)
 [![Platform](https://img.shields.io/badge/Platform-Fabric%201.21.11-red)](https://fabricmc.net)
 
-<p>Performance client for Minecraft 1.21.11 — 40+ optimizations, 20+ bug fixes, HUD overlays, and visual enhancements.</p>
+<p>Performance client for Minecraft 1.21.11 — 45+ optimizations, 20+ bug fixes, HUD overlays, and visual enhancements.</p>
 
 ⚠️ <b>Expect bugs.</b> Found one? Report on our <a href="https://discord.gg/SNzUYWbc5Q">Discord</a>.
+
+⚠️ <b>Mod Compatibility:</b> Incompatible with <b>Sodium</b>, <b>Iris</b>, <b>OptiFine</b>, and <b>Canvas</b> (rendering pipeline conflicts). Fully compatible with <b>Lithium</b>, <b>ReplayMod</b>, <b>ModernFix</b>, <b>FerriteCore</b>, <b>Krypton</b>, and <b>ImmediatelyFast</b>.
 
 </div>
 
@@ -18,7 +20,7 @@
 ### Features
 
 <details open>
-<summary><b>⚡ Performance</b> (21 optimizations)</summary>
+<summary><b>⚡ Performance</b> (25 optimizations)</summary>
 
 - **Lighting Kill** — disables all client-side lighting computation (lightmap, block light, sky light). Zero CPU cost for lighting.
 - **Entity/Item/Orb Culling** — distance-culls items (40b) and entities (128b). Aggregates nearby items+orbs into single rendered entities.
@@ -32,6 +34,9 @@
 - **Goal Selector Bloat** — limits entity AI goal evaluations per tick.
 - **Dynamic Uniforms** — reduces uniform update frequency in render passes.
 - **Frame Pacer Control** — frametime capping for consistent frame pacing.
+- **No Error GL Context** — eliminates OpenGL error checking overhead.
+- **Animation Culling** — skips animated texture updates for off-screen sprites.
+- **Block Face Culling** — early-out culling for hidden block faces.
 - **Particle Limiter** — caps particles per frame.
 - **Fog Disable** — completely removes all fog (water, lava, powder snow, blindness, darkness, atmospheric).
 - **Debug Renderer Skip** — eliminates debug renderer overhead.

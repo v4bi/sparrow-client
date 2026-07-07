@@ -153,7 +153,8 @@ public class SparrowConsoleScreen extends Screen {
 			context.fill(panelX, sugY, panelX + panelW, sugY + sugH, 0xEE0D1117);
 			int sy = sugY + 2;
 			for (int i = 0; i < sugs.size(); i++) {
-				context.drawText(textRenderer, sugs.get(i), outX, sy, i == 0 ? PROMPT : DIM, false);
+				int clr = (i == SparrowConsoleState.suggestionIndex) ? PROMPT : DIM;
+				context.drawText(textRenderer, sugs.get(i), outX, sy, clr, false);
 				sy += textRenderer.fontHeight + 2;
 			}
 		}

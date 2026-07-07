@@ -14,6 +14,7 @@ public class SparrowConsoleState {
     public static int cursorPos = 0;
     public static int consoleFps = 60;
     public static final java.util.List<String> suggestions = new java.util.ArrayList<>();
+    public static int suggestionIndex = -1;
 
     public static final int MAX_HISTORY = 100;
     public static final int MAX_CMD_HISTORY = 50;

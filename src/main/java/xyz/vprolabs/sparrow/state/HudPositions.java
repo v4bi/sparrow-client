@@ -8,7 +8,7 @@ public class HudPositions {
 
     private static final String[] KNOWN_KEYS = {
         "coords", "ping", "desync", "fire-timer", "ghost-block", "knockback", "shield",
-        "hotbar", "status-bars", "crosshair"
+        "hotbar", "status-bars"
     };
 
     public static int[] getOffset(String key) {
