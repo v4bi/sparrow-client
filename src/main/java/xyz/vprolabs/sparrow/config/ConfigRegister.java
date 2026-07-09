@@ -200,9 +200,6 @@ public final class ConfigRegister {
     public static final StringEntry playerHitType  = new StringEntry("player-hit-type", "Visual", "hit");
     public static final StringEntry playerHitColor = new StringEntry("player-hit-color", "Visual", "ff0000");
 
-    // ── Tweaks ────────────────────────────────────────────────────────
-    public static final Toggle clickQueue = new Toggle("click-relay", "Tweaks", false);
-
     // ── World ─────────────────────────────────────────────────────────
     public static final Toggle fullbright        = new Toggle("fullbright", "World", false);
     public static final Toggle noMiningFatigue   = new Toggle("no-mining-fatigue", "World", false);

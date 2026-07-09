@@ -179,8 +179,7 @@ Most toggles accept `on` / `off` as argument. Omitting the argument flips the cu
 
 **Movement** (0):
 
-**Tweaks** (1):
-`click-relay`
+**Tweaks** (0):
 
 **Camera** (5):
 `zoom`, `zoom-smoothness`, `zoom-min`, `zoom-max`, `disable-mouse-wheel`

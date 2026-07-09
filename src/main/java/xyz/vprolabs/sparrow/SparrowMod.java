@@ -32,16 +32,13 @@ public class SparrowMod implements ClientModInitializer {
     );
 
     /**
-     * Storage preview key is a "combo" trigger — it accepts either left or right Control.
-     * The KeyBinding itself is bound to LEFT_CONTROL (the default the user sees in Options),
-     * but the {@code isPreviewKeyPressed()} helper below checks both so left-handed users
-     * (and anyone rebinding to a different physical control) get the same UX.
+     * Storage preview key — only active when an inventory screen (HandledScreen) is open
+     * so it never conflicts with the vanilla sprint key (also LEFT_CONTROL by default).
      */
     public static boolean isPreviewKeyPressed() {
-        if (STORAGE_PREVIEW_KEY.isPressed()) return true;
-        long window = net.minecraft.client.MinecraftClient.getInstance().getWindow().getHandle();
-        return org.lwjgl.glfw.GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == org.lwjgl.glfw.GLFW.GLFW_PRESS
-            || org.lwjgl.glfw.GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        if (!(net.minecraft.client.MinecraftClient.getInstance().currentScreen
+            instanceof net.minecraft.client.gui.screen.ingame.HandledScreen)) return false;
+        return STORAGE_PREVIEW_KEY.isPressed();
     }
 
     public static final KeyBinding TOGGLE_SNEAK_KEY = new KeyBinding(

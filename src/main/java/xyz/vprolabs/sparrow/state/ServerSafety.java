@@ -14,9 +14,7 @@ public class ServerSafety {
     private static final String CDN_URL =
         "https://raw.githubusercontent.com/stfulua/sparrow-bfsl/main/features-server-block.json";
 
-    private static final Map<String, Set<String>> LOCAL_FALLBACK = Map.of(
-        "minemen", Set.of("click-relay", "shield-desync-fix")
-    );
+    private static final Map<String, Set<String>> LOCAL_FALLBACK = Map.of();
 
     private static String lastHost;
     private static final Set<String> disabled = new HashSet<>();
