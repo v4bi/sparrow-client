@@ -3,5 +3,6 @@
     "key.sparrow.zoom": "Zoom",
     "key.sparrow.storage_preview": "Storage Preview",
     "key.sparrow.toggle_sneak": "Toggle Sneak",
-    "key.sparrow.console": "Open Console"
+    "key.sparrow.console": "Open Console",
+    "key.sparrow.hud_move": "Move HUD"
 }

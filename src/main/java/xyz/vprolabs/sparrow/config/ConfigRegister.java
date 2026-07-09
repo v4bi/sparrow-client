@@ -222,8 +222,5 @@ public final class ConfigRegister {
     // ── Console ───────────────────────────────────────────────────────
     public static final IntEntry consoleFps = new IntEntry("console-fps", "Console", 60);
 
-    // ── HUD ────────────────────────────────────────────────────────────
-    public static final IntEntry movehudKey     = new IntEntry("movehud-key", "Visual", 75); // GLFW_KEY_K
-
     private ConfigRegister() {}
 }

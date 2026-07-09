@@ -19,12 +19,13 @@ public class GameOptionsMixin {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void registerSparrowKeybinds(CallbackInfo ci) {
-            KeyBinding[] extended = new KeyBinding[this.allKeys.length + 4];
+            KeyBinding[] extended = new KeyBinding[this.allKeys.length + 5];
             System.arraycopy(this.allKeys, 0, extended, 0, this.allKeys.length);
             extended[this.allKeys.length] = SparrowMod.ZOOM_KEY;
             extended[this.allKeys.length + 1] = SparrowMod.STORAGE_PREVIEW_KEY;
             extended[this.allKeys.length + 2] = SparrowMod.TOGGLE_SNEAK_KEY;
             extended[this.allKeys.length + 3] = SparrowMod.CONSOLE_KEY;
+            extended[this.allKeys.length + 4] = SparrowMod.HUD_MOVE_KEY;
             this.allKeys = extended;
             KeyBinding.updateKeysByCode();
     }

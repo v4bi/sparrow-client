@@ -55,6 +55,13 @@ public class SparrowMod implements ClientModInitializer {
         SPARROW_CATEGORY
     );
 
+    public static final KeyBinding HUD_MOVE_KEY = new KeyBinding(
+        "key.sparrow.hud_move",
+        InputUtil.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        SPARROW_CATEGORY
+    );
+
     @Override
     public void onInitializeClient() {
         SparrowLogger.init();

@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.UI.HUD;
 
+import xyz.vprolabs.sparrow.SparrowMod;
 import xyz.vprolabs.sparrow.config.ConfigReader;
-import xyz.vprolabs.sparrow.config.ConfigRegister;
 import xyz.vprolabs.sparrow.state.HudMoveState;
 import xyz.vprolabs.sparrow.state.HudPositions;
 import net.minecraft.client.MinecraftClient;
@@ -21,10 +21,8 @@ public class HudMoveMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
-        long handle = client.getWindow().getHandle();
 
-        int moveKey = ConfigRegister.movehudKey.get();
-        boolean moveKeyDown = GLFW.glfwGetKey(handle, moveKey) == GLFW.GLFW_PRESS;
+        boolean moveKeyDown = SparrowMod.HUD_MOVE_KEY.isPressed();
 
         if (!HudMoveState.active && moveKeyDown && !sparrow_moveKeyWasDown) {
             HudMoveState.activate();
@@ -34,6 +32,8 @@ public class HudMoveMixin {
         sparrow_moveKeyWasDown = moveKeyDown;
 
         if (!HudMoveState.active) return;
+
+        long handle = client.getWindow().getHandle();
 
         if (GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS) {
             ConfigReader.saveFromCache();
