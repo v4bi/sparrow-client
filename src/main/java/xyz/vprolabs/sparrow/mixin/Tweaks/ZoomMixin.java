@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Tweaks;
 
 import xyz.vprolabs.sparrow.SparrowMod;
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.tweaks.SparrowZoomState;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
@@ -17,7 +17,7 @@ public class ZoomMixin {
     private void sparrow_applyZoom(Camera camera, float tickDelta, boolean useSetting, CallbackInfoReturnable<Float> cir) {
             boolean isPressed = SparrowMod.ZOOM_KEY.isPressed();
             double target = isPressed ? SparrowZoomState.targetZoom : 1.0;
-            double step = 1.0 / Math.max(0.1, ConfigRegister.zoomSmoothness.get());
+            double step = 1.0 / Math.max(0.1, Modules.zoomSmoothness.floatValue());
 
             double diff = target - SparrowZoomState.currentZoom;
             if (Math.abs(diff) <= step) {

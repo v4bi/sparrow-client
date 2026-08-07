@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Tweaks;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
 import xyz.vprolabs.sparrow.mixin.Utils.ParticleManagerAccessor;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.client.particle.ParticleRenderer;
@@ -26,7 +26,7 @@ public class ParticleLimiterMixin {
 
     @Inject(method = "addParticle(Lnet/minecraft/client/particle/Particle;)V", at = @At("HEAD"), cancellable = true)
     private void sparrow_filterParticle(Particle particle, CallbackInfo ci) {
-            String mode = ConfigRegister.particleMode.get();
+            String mode = Modules.particleMode.stringValue();
             if (mode == null || mode.equals("on")) {
                 sparrow_liveCount++;
                 sparrow_liveByType.merge(particle.getClass(), 1, Integer::sum);
@@ -69,16 +69,9 @@ public class ParticleLimiterMixin {
             sparrow_liveByType.putAll(sparrow_reconcileScratch);
     }
 
-    @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
-    private void sparrow_skipTick(CallbackInfo ci) {
-            if ("off".equals(ConfigRegister.particleMode.get())) {
-                ci.cancel();
-            }
-    }
-
     @Inject(method = "getDebugString", at = @At("RETURN"), cancellable = true)
     private void sparrow_debugMode(CallbackInfoReturnable<String> cir) {
-            String mode = ConfigRegister.particleMode.get();
+            String mode = Modules.particleMode.stringValue();
             if (mode != null && !mode.equals("on")) {
                 String existing = cir.getReturnValue();
                 cir.setReturnValue((existing == null ? "" : existing) + " [" + mode + "]");

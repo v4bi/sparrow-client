@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization;
 
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.gl.DynamicUniforms;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -25,6 +26,9 @@ public class DynamicUniformsMixin {
         index = 2
     )
     private int sparrow_preallocateUbo(int initialCapacity) {
+            // GATED (2026-08-02): UBO prealloc to 16K is a memory-hungry
+            // optimization. Off by default; enable via module for big worlds.
+            if (!Modules.dynamicUboPrealloc.isEnabled()) return initialCapacity;
             if (!sparrow_preallocated) {
                 sparrow_preallocated = true;
                 SparrowLogger.debug("DynamicUniformsMixin: pre-allocating UBOs to " + SPARROW_UBO_CAPACITY);

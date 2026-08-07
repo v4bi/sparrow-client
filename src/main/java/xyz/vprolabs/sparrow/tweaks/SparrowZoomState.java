@@ -6,7 +6,12 @@ package xyz.vprolabs.sparrow.tweaks;
  */
 public class SparrowZoomState {
     public static double currentZoom = 1.0;
-    public static double targetZoom = 4.0;
+    // Inside the `zoom` camera module default (Modules.java). Keep in sync:
+    // ModuleHooks.onChanged("zoom") mirrors the live module value here, so a
+    // GUI/console change or config load re-picks the saved zoom on the next
+    // FOV tick. Previously hardcoded 4.0, which silently ignored both the
+    // saved value and the default until the scroll wheel was used.
+    public static double targetZoom = 2.0;
 
     private SparrowZoomState() {}
 }

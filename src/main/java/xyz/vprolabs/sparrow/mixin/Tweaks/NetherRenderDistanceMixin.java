@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.Tweaks;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class NetherRenderDistanceMixin {
     @Inject(method = "scheduleChunkRender(IIIZ)V", at = @At("HEAD"), cancellable = true)
     private void sparrow_capNetherChunkRender(int x, int y, int z, boolean important, CallbackInfo ci) {
-            int cap = ConfigRegister.netherRenderCap.get();
+            int cap = Modules.netherRenderCap.intValue();
             if (cap <= 0) return;
 
             MinecraftClient client = MinecraftClient.getInstance();

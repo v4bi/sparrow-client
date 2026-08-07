@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.Tweaks;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
@@ -29,13 +29,13 @@ public class ViewModelMixin {
 
     @Unique
     private static void sparrow_apply(MatrixStack matrices, ItemStack stack) {
-        float x = ConfigRegister.viewModelX.get();
-        float y = ConfigRegister.viewModelY.get();
-        float z = ConfigRegister.viewModelZ.get();
-        float size = ConfigRegister.viewModelSize.get();
+        float x = Modules.viewModelX.floatValue();
+        float y = Modules.viewModelY.floatValue();
+        float z = Modules.viewModelZ.floatValue();
+        float size = Modules.viewModelSize.floatValue();
 
         if (!sparrow_isWeapon(stack.getItem(), stack)) {
-            float us = ConfigRegister.utilityScale.get();
+            float us = Modules.utilityScale.floatValue();
             if (us > 0.01f && us != 1.0f) {
                 matrices.scale(us, us, us);
             }
@@ -49,7 +49,7 @@ public class ViewModelMixin {
         }
     }
 
-    @Inject(method = "renderItem(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/item/ItemStack;Lnet/minecraft/item/ItemDisplayContext;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;I)V", at = @At("HEAD"))
+    @Inject(method = "renderItem", at = @At("HEAD"))
     private void onRenderItem(LivingEntity entity, ItemStack stack, ItemDisplayContext context, MatrixStack matrices, OrderedRenderCommandQueue commandQueue, int light, CallbackInfo ci) {
             if (context == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || context == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) {
                 sparrow_apply(matrices, stack);

@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization;
 
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.texture.SpriteAtlasTexture;
 import net.minecraft.util.Identifier;
@@ -18,6 +19,11 @@ public class AnimationCullingMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void sparrow_skipInactiveAtlas(CallbackInfo ci) {
+        // Opt-in (2026-08-02): this mixin culled sprite-animation ticks when the
+        // atlas wasn't touched — but `getSprite` is only the common entry point,
+        // and static screens still require the atomizer to run. Gate it behind
+        // the module (default OFF) so normal play never sees frozen animations.
+        if (!Modules.animationCulling.isEnabled()) return;
         if (!sparrow_usedThisFrame) {
             ci.cancel();
             return;
@@ -31,6 +37,11 @@ public class AnimationCullingMixin {
 
     @Inject(method = "getSprite", at = @At("HEAD"))
     private void sparrow_markAtlasUsed(Identifier id, CallbackInfoReturnable<Sprite> cir) {
-        sparrow_usedThisFrame = true;
+        if (Modules.animationCulling.isEnabled()) sparrow_usedThisFrame = true;
+    }
+
+    @Inject(method = "getMissingSprite", at = @At("HEAD"))
+    private void sparrow_markAtlasUsedMissing(CallbackInfoReturnable<Sprite> cir) {
+        if (Modules.animationCulling.isEnabled()) sparrow_usedThisFrame = true;
     }
 }

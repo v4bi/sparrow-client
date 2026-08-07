@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization;
 
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.gui.screen.pack.PackScreen;
 import net.minecraft.client.texture.NativeImage;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,6 +26,7 @@ public class PackIconScalingMixin {
         )
     )
     private NativeImage sparrow_scalePackIcon(InputStream is) throws IOException {
+            if (!Modules.packIconScaling.isEnabled()) return NativeImage.read(is);
             NativeImage image = NativeImage.read(is);
             if (image == null) return null;
 

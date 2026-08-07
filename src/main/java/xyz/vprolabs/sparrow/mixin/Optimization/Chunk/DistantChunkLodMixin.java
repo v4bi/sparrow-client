@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization.Chunk;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.render.chunk.ChunkBuilder;
@@ -78,7 +78,7 @@ public class DistantChunkLodMixin {
 		if (distSq >= (double) transSkip * transSkip) {
 			if (!sparrow_lodLogged) {
 				sparrow_lodLogged = true;
-				SparrowLogger.debug("DistantChunkLodMixin: translucency skip at " + transSkip + " blocks (mode=" + ConfigRegister.blockLodMode.get() + ")");
+				SparrowLogger.debug("DistantChunkLodMixin: translucency skip at " + transSkip + " blocks (mode=" + Modules.blockLodMode.stringValue() + ")");
 			}
 			ci.cancel();
 		}
@@ -92,7 +92,7 @@ public class DistantChunkLodMixin {
 		if (renderCull <= 0) {
 			if (!sparrow_cullLogged) {
 				sparrow_cullLogged = true;
-				SparrowLogger.debug("DistantChunkLodMixin: cull disabled (mode=" + ConfigRegister.blockLodMode.get() + ")");
+				SparrowLogger.debug("DistantChunkLodMixin: cull disabled (mode=" + Modules.blockLodMode.stringValue() + ")");
 			}
 			return;
 		}
@@ -111,7 +111,7 @@ public class DistantChunkLodMixin {
 
 		if (!sparrow_cullLogged) {
 			sparrow_cullLogged = true;
-			SparrowLogger.debug("DistantChunkLodMixin: active, cull=" + renderCull + " blocks, mode=" + ConfigRegister.blockLodMode.get());
+			SparrowLogger.debug("DistantChunkLodMixin: active, cull=" + renderCull + " blocks, mode=" + Modules.blockLodMode.stringValue());
 		}
 
 		if (distSq >= (double) renderCull * renderCull) {
@@ -123,7 +123,7 @@ public class DistantChunkLodMixin {
 
 	@Unique
 	private static int getTransSkipBlocks() {
-		return switch (ConfigRegister.blockLodMode.get()) {
+		return switch (Modules.blockLodMode.stringValue()) {
 			case "LOW"       -> LOW_TRANS;
 			case "PVP"       -> PVP_TRANS;
 			case "AGGRESSIVE"-> AGGRESSIVE_TRANS;
@@ -133,7 +133,7 @@ public class DistantChunkLodMixin {
 
 	@Unique
 	private static int getRenderCullBlocks() {
-		return switch (ConfigRegister.blockLodMode.get()) {
+		return switch (Modules.blockLodMode.stringValue()) {
 			case "LOW"       -> LOW_CULL;
 			case "PVP"       -> PVP_CULL;
 			case "AGGRESSIVE"-> AGGRESSIVE_CULL;

@@ -1,11 +1,21 @@
 package xyz.vprolabs.sparrow.util;
 
+import java.util.regex.Pattern;
+
 public final class ColorUtil {
+    // Precompiled patterns (P5): parseArgb/parseRgb24 run per entity per
+    // frame (PlayerHitColorMixin); String.matches() recompiles every call.
+    private static final Pattern DECIMAL_RGB = Pattern.compile("\\d{3,9}");
+    private static final Pattern HEX_6 = Pattern.compile("[0-9a-fA-F]{6}");
+    private static final Pattern HEX_1_6 = Pattern.compile("[0-9a-fA-F]{1,6}");
+
     private ColorUtil() {}
 
     public static int parseRgb24(String raw, int fallback) {
         if (raw == null || raw.isEmpty()) return fallback;
-        String s = raw.trim().replace("#", "").replace("0x", "");
+        // HEX-1: strip BOTH lowercase and uppercase 0x prefixes — "0XFF0000"
+        // previously fell through to the hex branch and returned fallback.
+        String s = raw.trim().replace("#", "").replace("0x", "").replace("0X", "");
         try {
             if (s.contains(",")) {
                 String[] p = s.split(",");
@@ -23,7 +33,7 @@ public final class ColorUtil {
                          | Integer.parseInt(p[2].trim());
                 }
             }
-            if (s.matches("\\d{3,9}")) {
+            if (DECIMAL_RGB.matcher(s).matches()) {
                 int[] rgb = parseDecimalRgb(s);
                 if (rgb != null) return (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
                 return fallback;
@@ -34,7 +44,7 @@ public final class ColorUtil {
                 s = sb.toString();
             }
             if (s.length() > 6) s = s.substring(0, 6);
-            if (!s.matches("[0-9a-fA-F]{6}")) return fallback;
+            if (!HEX_6.matcher(s).matches()) return fallback;
             return Integer.parseInt(s, 16);
         } catch (NumberFormatException e) {
             return fallback;
@@ -44,9 +54,9 @@ public final class ColorUtil {
     public static int parseArgb(String raw, int alpha, int fallback) {
         int rgb = parseRgb24(raw, fallback & 0xFFFFFF);
         if ((rgb & 0xFFFFFF) == (fallback & 0xFFFFFF) && raw != null && !raw.isEmpty()
-            && !raw.replace("#","").replace("0x","").isEmpty()) {
-            String s = raw.replace("#", "").replace("0x", "");
-            if (!s.matches("[0-9a-fA-F]{1,6}") && !s.contains(",") && !s.contains(".") && !s.matches("\\d{3,9}")) {
+            && !raw.replace("#","").replace("0x","").replace("0X","").isEmpty()) {
+            String s = raw.replace("#", "").replace("0x", "").replace("0X", "");
+            if (!HEX_1_6.matcher(s).matches() && !s.contains(",") && !s.contains(".") && !DECIMAL_RGB.matcher(s).matches()) {
                 return fallback;
             }
         }
@@ -55,11 +65,11 @@ public final class ColorUtil {
 
     public static String normalizeHex(String raw) {
         if (raw == null) return null;
-        String s = raw.trim().replace("#", "").replace("0x", "");
+        String s = raw.trim().replace("#", "").replace("0x", "").replace("0X", "");
         if (s.contains(",") || s.contains(".")) return null;
-        if (s.matches("\\d{3,9}")) return null;
+        if (DECIMAL_RGB.matcher(s).matches()) return null;
         try {
-            if (s.matches("[0-9a-fA-F]{1,6}")) {
+            if (HEX_1_6.matcher(s).matches()) {
                 StringBuilder sb = new StringBuilder(s);
                 while (sb.length() < 6) sb.append('0');
                 Integer.parseInt(sb.toString(), 16);

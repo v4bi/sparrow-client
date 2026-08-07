@@ -10,3 +10,6 @@ archived/
 push-website.sh
 release.sh
 AGENTS.md
+# Custom mods copied into game/mods by the launcher at each launch —
+# local-only, never commit the jars (Essential is ~53MB).
+mods/

@@ -2,6 +2,7 @@ package xyz.vprolabs.sparrow.tweaks;
 
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.GhostBlockState;
 import xyz.vprolabs.sparrow.state.HudMoveState;
 import xyz.vprolabs.sparrow.state.HudPositions;
@@ -15,6 +16,8 @@ public final class GhostBlockRenderer {
     private GhostBlockRenderer() {}
 
     public static void render(DrawContext ctx, TextRenderer font) {
+        // Opt-in (2026-08-02): render only when the module is enabled.
+        if (!Modules.ghostBlock.isEnabled()) return;
         int count = GhostBlockState.ghostBlocks.size();
         if (count == 0) return;
 

@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.UI.HUD;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.tweaks.ShieldChargeRenderer;
 
 import net.minecraft.client.MinecraftClient;
@@ -17,7 +17,7 @@ public class ShieldChargeMixin {
 
     @Inject(method = "render", at = @At("TAIL"))
     private void sparrow_renderShieldCharge(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        if (!ConfigRegister.shieldStatus.get()) return;
+        if (!Modules.shieldStatus.isEnabled()) return;
         if (MinecraftClient.getInstance().options.hudHidden) return;
             ShieldChargeRenderer.render(context);
     }

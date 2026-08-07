@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.Tweaks;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
@@ -52,7 +52,7 @@ public class OldPotionColorsMixin {
 
     @Inject(method = "getColor", at = @At("HEAD"), cancellable = true)
     private void onGetColor(CallbackInfoReturnable<Integer> cir) {
-            if (!ConfigRegister.oldPotions.get()) return;
+            if (!Modules.oldPotions.isEnabled()) return;
             StatusEffect self = (StatusEffect) (Object) this;
             Identifier id = Registries.STATUS_EFFECT.getId(self);
             if (id != null) {

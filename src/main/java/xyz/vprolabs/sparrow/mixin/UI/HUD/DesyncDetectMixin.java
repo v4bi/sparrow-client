@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.UI.HUD;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.HudState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class DesyncDetectMixin {
     @Inject(method = "onPlayerPositionLook", at = @At("HEAD"))
     private void onPositionLook(PlayerPositionLookS2CPacket packet, CallbackInfo ci) {
-            if (!ConfigRegister.desync.get()) return;
+            if (!Modules.desync.isEnabled()) return;
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player == null) return;
             var pi = client.player.input.playerInput;

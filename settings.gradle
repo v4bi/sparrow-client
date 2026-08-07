@@ -5,3 +5,70 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+// Loom cache relocation: fabric-loom cache lives outside ~/.gradle.
+// Why: a weekly script wipes ~/.gradle/caches/*, deleting the ~275MB global
+// fabric-loom cache and forcing a 3+ minute cold Minecraft remap next build.
+// Real data lives in ~/.cache/sparrow-loom; ~/.gradle/caches/fabric-loom is a
+// symlink to it. This block self-heals the symlink on every gradle invocation
+// and migrates a leftover real directory if one exists. Gradle requires the
+// pluginManagement block above to be first; the loom plugin itself is applied
+// from build.gradle, which evaluates after this file, so this still runs first.
+def loomCacheLink = new File(System.getProperty("user.home"), ".gradle/caches/fabric-loom")
+def loomCacheReal = new File(System.getProperty("user.home"), ".cache/sparrow-loom")
+
+def copyTree = { File src, File dst ->
+    if (src.isDirectory()) {
+        dst.mkdirs()
+        src.listFiles()?.each { f -> copyTree(f, new File(dst, f.getName())) }
+    } else {
+        dst.parentFile.mkdirs()
+        java.nio.file.Files.copy(src.toPath(), dst.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+}
+def deleteTree = { File f ->
+    if (f.isDirectory()) {
+        f.listFiles()?.each { deleteTree(it) }
+        f.deleteDir()
+    } else {
+        f.delete()
+    }
+}
+
+try {
+    if (!loomCacheReal.exists()) {
+        loomCacheReal.mkdirs()
+    }
+    if (java.nio.file.Files.isSymbolicLink(loomCacheLink.toPath())) {
+        // Already a symlink: only replace it if it points at the wrong target.
+        // readSymbolicLink (unlike getCanonicalPath) also works on broken links.
+        if (!java.nio.file.Files.readSymbolicLink(loomCacheLink.toPath()).toAbsolutePath()
+                .equals(loomCacheReal.toPath().toAbsolutePath())) {
+            loomCacheLink.delete()
+        }
+    } else if (loomCacheLink.isDirectory()) {
+        // Pre-relocation real directory with content: move entries into the
+        // real dir, then drop the old dir so the symlink can take its place.
+        loomCacheLink.listFiles()?.each { entry ->
+            def dest = new File(loomCacheReal, entry.getName())
+            try {
+                java.nio.file.Files.move(entry.toPath(), dest.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } catch (Exception moveEx) {
+                // Cross-filesystem move failure: fall back to copy + delete.
+                copyTree(entry, dest)
+                deleteTree(entry)
+            }
+        }
+        loomCacheLink.deleteDir()
+    } else if (loomCacheLink.exists()) {
+        // Stray file or broken symlink at the link path: clear it.
+        loomCacheLink.delete()
+    }
+    if (!java.nio.file.Files.isSymbolicLink(loomCacheLink.toPath())) {
+        java.nio.file.Files.createSymbolicLink(loomCacheLink.toPath(), loomCacheReal.toPath())
+    }
+} catch (Exception e) {
+    // Never crash the build over cache plumbing; warn and continue.
+    System.err.println("[sparrow settings] Loom cache relocation failed (continuing): " + e)
+}

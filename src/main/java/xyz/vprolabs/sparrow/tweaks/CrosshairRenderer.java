@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.tweaks;
 
 import net.minecraft.client.gui.DrawContext;
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.util.ColorUtil;
 
 public final class CrosshairRenderer {
@@ -13,12 +13,12 @@ public final class CrosshairRenderer {
     private static String cachedType = "";
 
     public static void render(DrawContext context, int width, int height) {
-        String type = ConfigRegister.crosshair.get();
+        String type = Modules.crosshairMode.stringValue();
         if (type.equals("off")) return;
 
         if (!type.equals(cachedType)) cachedType = type;
 
-        String colorStr = ConfigRegister.crosshairColor.get();
+        String colorStr = Modules.crosshairColor.stringValue();
         if (!colorStr.equals(cachedColorStr)) {
             int color = ColorUtil.parseRgb24(colorStr, 0xFFFFFF);
             cachedArgb = 0xFF000000 | color;

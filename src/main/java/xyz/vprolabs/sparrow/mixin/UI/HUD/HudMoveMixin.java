@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.UI.HUD;
 
 import xyz.vprolabs.sparrow.SparrowMod;
-import xyz.vprolabs.sparrow.config.ConfigReader;
+import xyz.vprolabs.sparrow.module.ModuleManager;
 import xyz.vprolabs.sparrow.state.HudMoveState;
 import xyz.vprolabs.sparrow.state.HudPositions;
 import net.minecraft.client.MinecraftClient;
@@ -36,7 +36,9 @@ public class HudMoveMixin {
         long handle = client.getWindow().getHandle();
 
         if (GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS) {
-            ConfigReader.saveFromCache();
+            // Immediate save: HUD positions live in the same modules.json
+            // payload as module values (ModuleManager writes HudPositions).
+            ModuleManager.saveNow();
             HudMoveState.reset();
             return;
         }

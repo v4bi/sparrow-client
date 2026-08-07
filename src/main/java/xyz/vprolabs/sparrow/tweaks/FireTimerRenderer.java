@@ -11,7 +11,7 @@ package xyz.vprolabs.sparrow.tweaks;
 
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.HudMoveState;
 import xyz.vprolabs.sparrow.state.HudPositions;
 import xyz.vprolabs.sparrow.state.HudState;
@@ -37,7 +37,7 @@ public final class FireTimerRenderer {
 
         int x;
         int y;
-        String pos = ConfigRegister.fireTimerPos.get();
+        String pos = Modules.fireTimerPos.stringValue();
 
         if ("TOP_LEFT".equals(pos)) {
             x = 5;

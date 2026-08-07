@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Visual;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.PlayerHitState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
@@ -21,8 +22,9 @@ public class PlayerHitDetectionMixin {
 
     @Inject(method = "attackEntity", at = @At("HEAD"), require = 0)
     private void sparrow_trackAttack(PlayerEntity player, Entity target, CallbackInfo ci) {
-        if (!ConfigRegister.playerHit.get()) return;
-        if (!ConfigRegister.playerHitType.get().equals("hit")) return;
+        SparrowLogger.mixinLoaded("PlayerHitDetectionMixin");
+        if (!Modules.playerHitEnabled.isEnabled()) return;
+        if (!Modules.playerHitType.stringValue().equals("hit")) return;
         if (target != null) {
             PlayerHitState.registerHit(target.getId());
         }
@@ -30,11 +32,12 @@ public class PlayerHitDetectionMixin {
 
     @Inject(method = "render", at = @At("HEAD"), require = 0)
     private void sparrow_perFrameUpdate(boolean tick, CallbackInfo ci) {
-        if (!ConfigRegister.playerHit.get()) return;
+        SparrowLogger.mixinLoaded("PlayerHitDetectionMixin");
+        if (!Modules.playerHitEnabled.isEnabled()) return;
 
         PlayerHitState.tick();
 
-        if (!ConfigRegister.playerHitType.get().equals("abletohit")) return;
+        if (!Modules.playerHitType.stringValue().equals("abletohit")) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.crosshairTarget == null) {

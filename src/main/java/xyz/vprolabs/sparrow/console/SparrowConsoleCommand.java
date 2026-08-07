@@ -118,6 +118,17 @@ public final class SparrowConsoleCommand {
 			@Override public String getDescription() { return "List all features and values"; }
 		});
 
+		register("gui", new Command() {
+			@Override public String execute(String[] args) {
+				// Open the click GUI from the console; the keybind (G) toggles
+				// it directly without going through the console.
+				net.minecraft.client.MinecraftClient.getInstance()
+					.setScreen(new xyz.vprolabs.sparrow.gui.ClickGuiScreen());
+				return "\u00a77Sparrow GUI opened. Drag panels by their header, scroll to browse.";
+			}
+			@Override public String getDescription() { return "Open the click GUI"; }
+		});
+
 		FeatureRegistry.registerAllCommands();
 	}
 }

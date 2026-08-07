@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.state;
 
 import xyz.vprolabs.sparrow.BuildInfo;
+import xyz.vprolabs.sparrow.logging.SparrowLogger;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 import java.io.BufferedReader;
@@ -35,15 +36,28 @@ public class VersionCheck {
                 String current = BuildInfo.BUILD_TAG.trim();
                 if (fLatest.equals(current)) return;
 
+                // checkOnce() is called on the first render frame (title
+                // screen), where player is null — a plain execute() would
+                // drop the notice forever (checked stays true). Poll up to
+                // 60s for a live player so the message actually reaches one.
                 MinecraftClient client = MinecraftClient.getInstance();
-                client.execute(() -> {
-                    if (client.player == null) return;
-                    client.player.sendMessage(Text.literal(
-                        "§7[Sparrow] §eNew version available: §f" + fLatest +
-                        " §7→ §7[§fhttps://github.com/stfulua/sparrow-client/releases§7]"
-                    ), false);
-                });
-            } catch (Exception ignored) {
+                long deadline = System.currentTimeMillis() + 60_000;
+                while (System.currentTimeMillis() < deadline) {
+                    if (client.player != null) {
+                        client.execute(() -> {
+                            if (client.player == null) return;
+                            client.player.sendMessage(Text.literal(
+                                "§7[Sparrow] §eNew version available: §f" + fLatest +
+                                " §7→ §7[§fhttps://github.com/stfulua/sparrow-client/releases§7]"
+                            ), false);
+                        });
+                        return;
+                    }
+                    Thread.sleep(1000);
+                }
+            } catch (Exception e) {
+                // F3: the silent catch hid every failure (offline, DNS, 5xx).
+                SparrowLogger.warn("VersionCheck: could not check for updates (" + e.getMessage() + ")");
             }
         }, "Sparrow-VersionCheck").start();
     }

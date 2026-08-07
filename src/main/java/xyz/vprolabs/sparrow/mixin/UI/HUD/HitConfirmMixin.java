@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.UI.HUD;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.HudState;
 import xyz.vprolabs.sparrow.tweaks.HitConfirmRenderer;
 import net.minecraft.client.MinecraftClient;
@@ -27,6 +28,7 @@ public class HitConfirmMixin {
 
     @Inject(method = "attackEntity", at = @At("HEAD"), require = 0)
     private void sparrow_trackAttack(PlayerEntity player, Entity target, CallbackInfo ci) {
+            SparrowLogger.mixinLoaded("HitConfirmMixin");
             if (target != null) {
                 HudState.registerAttack(target.getId());
             }
@@ -34,6 +36,7 @@ public class HitConfirmMixin {
 
     @Inject(method = "onEntityStatus", at = @At("HEAD"), require = 0)
     private void sparrow_onEntityStatus(EntityStatusS2CPacket packet, CallbackInfo ci) {
+            SparrowLogger.mixinLoaded("HitConfirmMixin");
             byte status = packet.getStatus();
             switch (status) {
                 case 2:
@@ -50,7 +53,7 @@ public class HitConfirmMixin {
                             Entity entity = packet.getEntity(client.world);
                             if (entity != null && entity.getId() == HudState.lastAttackedEntityId) {
                                 HudState.confirmHit(entity.getId());
-                                if (ConfigRegister.hitmarker.get() && client.player != null) {
+                                if (Modules.hitmarker.isEnabled() && client.player != null) {
                                     client.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.5f);
                                 }
                             }
@@ -64,6 +67,7 @@ public class HitConfirmMixin {
 
     @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void sparrow_renderHitConfirm(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+        SparrowLogger.mixinLoaded("HitConfirmMixin");
         if (MinecraftClient.getInstance().options.hudHidden) return;
             HitConfirmRenderer.render(context, MinecraftClient.getInstance().textRenderer);
     }

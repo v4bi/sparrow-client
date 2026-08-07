@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.*;
+import xyz.vprolabs.sparrow.logging.SparrowLogger;
 
 public class ServerSafety {
     private static final String CDN_URL =
@@ -16,7 +17,10 @@ public class ServerSafety {
 
     private static final Map<String, Set<String>> LOCAL_FALLBACK = Map.of();
 
-    private static String lastHost;
+    // RACE-1: written by the CDN fetch thread (lastHost = null on success)
+    // and read by sync() on the render thread — volatile so the null-reset
+    // is visible; a missed reset would keep stale blocklist entries applied.
+    private static volatile String lastHost;
     private static final Set<String> disabled = new HashSet<>();
     private static boolean warned;
 
@@ -93,7 +97,11 @@ public class ServerSafety {
                 remoteBlocklist = parseJson(sb.toString());
                 remoteReady = true;
                 lastHost = null;
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                // F2: swallowing the error made a CDN outage look like an
+                // empty blocklist (false sense of safety). Log instead; the
+                // LOCAL_FALLBACK blocklist still applies.
+                SparrowLogger.warn("ServerSafety: CDN fetch failed (" + e.getMessage() + ") — local fallback only");
             }
         }, "Sparrow-CDN").start();
     }

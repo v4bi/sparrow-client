@@ -3,7 +3,7 @@ package xyz.vprolabs.sparrow.tweaks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.GhostBlockState;
 import xyz.vprolabs.sparrow.state.HudMoveState;
 import xyz.vprolabs.sparrow.state.HudPositions;
@@ -36,7 +36,7 @@ public final class HudRenderer {
         int scaledH = ctx.getScaledWindowHeight();
 
         // Coords
-        if (ConfigRegister.coords.get()) {
+        if (Modules.coords.isEnabled()) {
             String text = String.format("XYZ: %.0f / %.0f / %.0f",
                 client.player.getX(), client.player.getY(), client.player.getZ());
             int[] pos = addOffset("coords", PADDING, scaledH - 55);
@@ -50,7 +50,7 @@ public final class HudRenderer {
         }
 
         // Ping (cached width)
-        if (ConfigRegister.ping.get() && HudState.currentPing > 0) {
+        if (Modules.ping.isEnabled() && HudState.currentPing > 0) {
             String text = "Ping: " + HudState.currentPing + "ms";
             int tw = font.getWidth(text);
             if (pingW < 0) pingW = tw;
@@ -64,7 +64,7 @@ public final class HudRenderer {
         }
 
         // Desync warning (moved 50px higher, cached width)
-        if (ConfigRegister.desync.get()) {
+        if (Modules.desync.isEnabled()) {
             long elapsed = System.currentTimeMillis() - HudState.lastDesyncTime;
             if (elapsed < HudState.DESYNC_HIDE_DURATION) {
                 String text = "\u00a7c\u26a0 Desync detected!";

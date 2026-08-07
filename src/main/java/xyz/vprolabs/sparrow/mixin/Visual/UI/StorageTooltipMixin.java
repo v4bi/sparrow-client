@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.visual.ui;
 
 import xyz.vprolabs.sparrow.SparrowMod;
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.StoragePreviewState;
 import xyz.vprolabs.sparrow.mixin.Utils.HandledScreenAccessor;
 import xyz.vprolabs.sparrow.tweaks.StorageTooltipRenderer;
@@ -31,7 +31,7 @@ public class StorageTooltipMixin {
 
     @Inject(method = "drawMouseoverTooltip", at = @At("HEAD"), cancellable = true)
     private void sparrow_replaceTooltipWithGrid(DrawContext context, int mouseX, int mouseY, CallbackInfo ci) {
-            if (!ConfigRegister.storageTooltip.get()) return;
+            if (!Modules.storageTooltip.isEnabled()) return;
 
             HandledScreenAccessor acc = (HandledScreenAccessor)(Object)this;
             Slot focusedSlot = acc.getFocusedSlot();

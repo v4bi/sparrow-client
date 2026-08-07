@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization;
 
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.render.FrameGraphBuilder;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.render.state.CameraRenderState;
@@ -18,8 +19,9 @@ public class WorldRendererRenderKillMixin {
     @Unique
     private static boolean sparrow_worldRenderLogged = false;
 
-    @Inject(method = "renderLateDebug(Lnet/minecraft/client/render/FrameGraphBuilder;Lnet/minecraft/client/render/state/CameraRenderState;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Matrix4f;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "renderLateDebug", at = @At("HEAD"), cancellable = true)
     private void sparrow_stopRenderLateDebug(FrameGraphBuilder builder, CameraRenderState cameraRenderState, GpuBufferSlice gpuBufferSlice, Matrix4f matrix4f, CallbackInfo ci) {
+            if (!Modules.debugRenderKill.isEnabled()) return;
             if (!sparrow_worldRenderLogged) {
                 sparrow_worldRenderLogged = true;
                 SparrowLogger.debug("WorldRendererRenderKillMixin: blocking renderLateDebug");

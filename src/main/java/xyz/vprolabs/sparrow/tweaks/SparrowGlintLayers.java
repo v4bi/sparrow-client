@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.tweaks;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImageBackedTexture;
@@ -38,10 +38,10 @@ public class SparrowGlintLayers {
         if (tintKey == sparrow_lastTintKey) return;
         sparrow_lastTintKey = tintKey;
 
-        if (ConfigRegister.customGlint.get()) {
-            int r = clampChannel(ConfigRegister.glintR.get());
-            int g = clampChannel(ConfigRegister.glintG.get());
-            int b = clampChannel(ConfigRegister.glintB.get());
+        if (Modules.customGlint.isEnabled()) {
+            int r = clampChannel(Modules.glintR.intValue());
+            int g = clampChannel(Modules.glintG.intValue());
+            int b = clampChannel(Modules.glintB.intValue());
             replaceGlint(client, VANILLA_ITEM_GLINT, sparrowItemTexture, r, g, b, tex -> sparrowItemTexture = tex);
             replaceGlint(client, VANILLA_ARMOR_GLINT, sparrowArmorTexture, r, g, b, tex -> sparrowArmorTexture = tex);
             SparrowLogger.info("SparrowGlintLayers: applied tint RGB(" + r + "," + g + "," + b + ")");
@@ -105,9 +105,9 @@ public class SparrowGlintLayers {
     }
 
     private static int tintKey() {
-        int base = (ConfigRegister.customGlint.get() ? 1 : 0) << 24;
-        if (!ConfigRegister.customGlint.get()) return base;
-        return base | (clampChannel(ConfigRegister.glintR.get()) << 16) | (clampChannel(ConfigRegister.glintG.get()) << 8) | clampChannel(ConfigRegister.glintB.get());
+        int base = (Modules.customGlint.isEnabled() ? 1 : 0) << 24;
+        if (!Modules.customGlint.isEnabled()) return base;
+        return base | (clampChannel(Modules.glintR.intValue()) << 16) | (clampChannel(Modules.glintG.intValue()) << 8) | clampChannel(Modules.glintB.intValue());
     }
 
     /**

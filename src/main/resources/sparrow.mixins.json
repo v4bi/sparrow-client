@@ -91,6 +91,7 @@
     "Optimization.LightingKillMixin",
     "Tweaks.FogDisableMixin",
     "UI.HUD.AttackCooldownMixin",
+    "UI.HUD.AttackCooldownPreserveMixin",
     "UI.HUD.CooldownResetTrackerMixin",
     "UI.HUD.DesyncDetectMixin",
     "UI.HUD.FireTimerMixin",
@@ -102,7 +103,6 @@
     "UI.HUD.CrosshairMixin",
     "Visual.PlayerHitColorMixin",
     "Visual.PlayerHitDetectionMixin",
-    "UI.HUD.SwapCooldownHudMixin",
     "UI.VideoOptionsScreenMixin",
 
     "visual.ui.StorageTooltipMixin",

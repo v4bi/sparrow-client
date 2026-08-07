@@ -10,8 +10,8 @@
 
 package xyz.vprolabs.sparrow.mixin.UI.HUD;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.HudState;
 import xyz.vprolabs.sparrow.tweaks.FireTimerRenderer;
 import net.minecraft.client.MinecraftClient;
@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class FireTimerMixin {
 @Inject(method = "render", at = @At("TAIL"))
     private void sparrow_renderFireTimer(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-if (!ConfigRegister.fireTimer.get()) {
+if (!Modules.fireTimer.child("fire-timer-enabled").isEnabled()) {
             return;
         }
 

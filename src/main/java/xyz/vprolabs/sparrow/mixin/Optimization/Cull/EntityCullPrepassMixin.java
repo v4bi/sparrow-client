@@ -1,7 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization.Cull;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.EntityAggregationState;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,23 +55,26 @@ public abstract class EntityCullPrepassMixin {
         return ((long) bx << 32) | (bz & 0xFFFFFFFFL) ^ ((long) typeHash << 16);
     }
 
+    // P1: two HashMaps were allocated per frame at HEAD of every render
+    // frame (which cleared the state maps anyway). Reuse static temp maps —
+    // single-threaded render path, cleared per frame, zero GC churn.
+    @Unique private static final Map<Long, Integer> itemBucketTotals = new HashMap<>();
+    @Unique private static final Map<Long, Integer> orbBucketTotals = new HashMap<>();
+
     @Inject(method = "fillEntityRenderStates", at = @At("HEAD"))
     private void sparrow_cullPrepass(Camera camera, Frustum frustum, RenderTickCounter tickCounter, WorldRenderState state, CallbackInfo ci) {
         if (this.world == null) return;
 
         Vec3d camPos = camera.getCameraPos();
         double px = camPos.x, py = camPos.y, pz = camPos.z;
-        float itemDist = ConfigRegister.itemCullingDistance.get();
-        float entityDist = ConfigRegister.entityCullingDistance.get();
+        float itemDist = Modules.itemCullingDistance.floatValue();
+        float entityDist = Modules.entityCullingDistance.floatValue();
         double itemDistSq = (double) itemDist * itemDist;
         double entityDistSq = (double) entityDist * entityDist;
 
         EntityAggregationState.clearPerFrame();
-
-        // Temp per-bucket totals. Rep id (min id in bucket) is written to
-        // EntityAggregationState.itemBucketRepIds / orbBucketRepIds directly as we go.
-        Map<Long, Integer> itemBucketTotals = new HashMap<>();
-        Map<Long, Integer> orbBucketTotals = new HashMap<>();
+        itemBucketTotals.clear();
+        orbBucketTotals.clear();
 
         for (Entity entity : this.world.getEntities()) {
             double dx = entity.getX() - px;

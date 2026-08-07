@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.Visual;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.PlayerHitState;
 import xyz.vprolabs.sparrow.util.ColorUtil;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
@@ -19,11 +19,11 @@ public class PlayerHitColorMixin {
 
     @Inject(method = "updateRenderState", at = @At("TAIL"))
     private void sparrow_overrideHurt(LivingEntity entity, LivingEntityRenderState state, float tickDelta, CallbackInfo ci) {
-        if (!ConfigRegister.playerHit.get()) return;
+        if (!Modules.playerHitEnabled.isEnabled()) return;
         if (!(entity instanceof PlayerEntity player)) return;
         int id = player.getId();
         boolean highlight;
-        if (ConfigRegister.playerHitType.get().equals("hit")) {
+        if (Modules.playerHitType.stringValue().equals("hit")) {
             highlight = PlayerHitState.isRecentlyHit(id);
         } else {
             highlight = PlayerHitState.ableToHitEntityId == id;
@@ -35,10 +35,10 @@ public class PlayerHitColorMixin {
 
     @Inject(method = "getMixColor", at = @At("RETURN"), cancellable = true)
     private void sparrow_hitMixColor(LivingEntityRenderState state, CallbackInfoReturnable<Integer> cir) {
-        if (!ConfigRegister.playerHit.get()) return;
+        if (!Modules.playerHitEnabled.isEnabled()) return;
         if (!(state instanceof PlayerEntityRenderState)) return;
         if (!state.hurt) return;
-        int color = ColorUtil.parseArgb(ConfigRegister.playerHitColor.get(), 0x80, 0x80FF0000);
+        int color = ColorUtil.parseArgb(Modules.playerHitColor.stringValue(), 0x80, 0x80FF0000);
         cir.setReturnValue(color);
     }
 }

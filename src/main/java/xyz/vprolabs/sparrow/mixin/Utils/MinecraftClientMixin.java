@@ -1,15 +1,17 @@
 package xyz.vprolabs.sparrow.mixin.Utils;
 
 // DEFERRED-INIT WARNING:
-// ConfigRegister is loaded here on the first render frame, not in SparrowMod.onInitializeClient().
-// This means any code that runs in a constructor, static initializer, or early mixin
-// (before the first render tick) must NOT read ConfigRegister -- it will see Java defaults.
-// Contributors: do not move ConfigRegister reads earlier than this point.
+// The module system (Modules/ModuleManager) is loaded here on the first render
+// frame, not in SparrowMod.onInitializeClient(). Any code that runs in a
+// constructor, static initializer, or early mixin (before the first render
+// tick) must NOT read Modules — it will see Java defaults.
+// Contributors: do not move Modules reads earlier than this point.
 
-import xyz.vprolabs.sparrow.config.ConfigReader;
+import xyz.vprolabs.sparrow.module.ModuleManager;
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
 import xyz.vprolabs.sparrow.mixin.Utils.SimpleOptionAccessor;
 import xyz.vprolabs.sparrow.tweaks.SparrowGlintLayers;
+import xyz.vprolabs.sparrow.state.VersionCheck;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -39,12 +41,14 @@ public class MinecraftClientMixin {
             ((SimpleOptionAccessor)(Object)client.options.getGamma()).setValue(15.0);
             SparrowLogger.info("Forced gamma to 15.0 (fullbright)");
 
-            ConfigReader.load();
+            ModuleManager.load();
             SparrowGlintLayers.init();
 
-            if (ConfigReader.getInstance().isAllDefaults()) {
-                SparrowLogger.warn("Config not found or all-defaults -- check sparrow-minecraft/config.json");
-            }
+            // Version check runs once per session, from here (first render
+            // frame). It used to ride on ServerSafety.sync(), whose only
+            // entry point (isFeatureDisabled) has no consumers left, so the
+            // update notice never fired.
+            VersionCheck.checkOnce();
     }
 
     @Inject(method = "render", at = @At("HEAD"))

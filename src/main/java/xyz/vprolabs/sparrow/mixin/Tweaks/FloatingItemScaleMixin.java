@@ -1,6 +1,6 @@
 package xyz.vprolabs.sparrow.mixin.Tweaks;
 
-import xyz.vprolabs.sparrow.config.ConfigRegister;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.gui.hud.InGameOverlayRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class FloatingItemScaleMixin {
 @Inject(method = "renderFloatingItem", at = @At("HEAD"))
     private void sparrow_scaleFloatingItem(MatrixStack matrices, float tickDelta, OrderedRenderCommandQueue commandQueue, CallbackInfo ci) {
-    if (ConfigRegister.smallTotem.get()) {
+    if (Modules.smallTotem.isEnabled()) {
                 float s = 0.5f;
                 matrices.scale(s, s, s);
             }

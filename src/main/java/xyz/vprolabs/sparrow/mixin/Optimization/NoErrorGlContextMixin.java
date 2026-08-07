@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization;
 
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,6 +19,7 @@ public class NoErrorGlContextMixin {
 
     @Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwCreateWindow(IILjava/lang/CharSequence;JJ)J"))
     private void sparrow_setNoErrorHint(CallbackInfo ci) {
+        if (!Modules.noErrorGlContext.isEnabled()) return;
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_NO_ERROR, GLFW.GLFW_TRUE);
     }
 

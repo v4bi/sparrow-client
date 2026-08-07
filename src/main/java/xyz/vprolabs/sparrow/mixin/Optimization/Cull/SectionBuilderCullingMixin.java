@@ -1,6 +1,7 @@
 package xyz.vprolabs.sparrow.mixin.Optimization.Cull;
 
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
+import xyz.vprolabs.sparrow.module.Modules;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.chunk.BlockBufferAllocatorStorage;
 import net.minecraft.client.render.chunk.ChunkRendererRegion;
@@ -27,6 +28,10 @@ public class SectionBuilderCullingMixin {
         BlockBufferAllocatorStorage allocatorStorage,
         CallbackInfoReturnable<SectionBuilder.RenderData> cir
     ) {
+            // GATED (2026-08-02): off by default, must be opted into. When off
+            // the underground section build stays intact and no ghost geometry
+            // appears from returning an empty RenderData below the cut Y.
+            if (!Modules.sectionCulling.isEnabled()) return;
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player == null) return;
 
