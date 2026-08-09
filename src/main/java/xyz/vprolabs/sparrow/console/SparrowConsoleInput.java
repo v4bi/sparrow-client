@@ -1,5 +1,6 @@
 package xyz.vprolabs.sparrow.console;
 
+import xyz.vprolabs.sparrow.gui.Theme;
 import org.lwjgl.glfw.GLFW;
 import java.util.Collections;
 import java.util.List;
@@ -107,7 +108,7 @@ public class SparrowConsoleInput {
 		}
 		SparrowConsoleState.historyIndex = -1;
 
-		SparrowConsoleState.addLine("\u00a77> \u00a7f" + input, 0xFF5A6A8A);
+		SparrowConsoleState.addLine("\u00a77> \u00a7f" + input, Theme.DIM);
 
 		String cmdInput = input;
 		if (cmdInput.toLowerCase(Locale.ROOT).startsWith("sparrow ")) {
@@ -118,7 +119,7 @@ public class SparrowConsoleInput {
 
 		String result = SparrowConsoleCommand.dispatch(cmdInput);
 		if (!result.isEmpty()) {
-			SparrowConsoleState.addLine("  " + result, 0xFFE8EDF5);
+			SparrowConsoleState.addLine("  " + result, Theme.FG);
 		}
 	}
 

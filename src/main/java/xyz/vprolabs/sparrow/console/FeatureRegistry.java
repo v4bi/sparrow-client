@@ -125,7 +125,8 @@ public final class FeatureRegistry {
 		java.util.Set<String> groupedNames = java.util.Set.of(
 			"glint-r", "glint-g", "glint-b", "custom-glint",
 			"view-x", "view-y", "view-z", "view-size", "utility-scale",
-			"zoom", "zoom-smoothness", "zoom-min", "zoom-max",
+			"zoom", "zoom-level", "zoom-smoothness", "zoom-min", "zoom-max",
+			"zoom-reset-value",
 			"fire-timer", "fire-timer-pos",
 			"particles", "block-lod-mode", "movehud",
             "crosshair", "crosshair-color",
@@ -207,7 +208,8 @@ public final class FeatureRegistry {
 		java.util.Set<String> grouped = java.util.Set.of(
 			"glint", "glint-r", "glint-g", "glint-b", "custom-glint",
 			"view-x", "view-y", "view-z", "view-size", "utility-scale",
-			"zoom", "zoom-smoothness", "zoom-min", "zoom-max",
+			"zoom", "zoom-level", "zoom-smoothness", "zoom-min", "zoom-max",
+			"zoom-reset-value",
 			"fire-timer", "fire-timer-pos",
 			"particles", "block-lod-mode", "movehud",
 			"crosshair", "crosshair-color",
@@ -472,11 +474,25 @@ public final class FeatureRegistry {
 					return "\u00a77zoom \u00a7f" + Modules.zoomLevel.floatValue() + "x"
 						+ " \u00a77smoothness=" + Modules.zoomSmoothness.floatValue()
 						+ " \u00a77min=" + Modules.zoomMin.floatValue()
-						+ " \u00a77max=" + Modules.zoomMax.floatValue();
+						+ " \u00a77max=" + Modules.zoomMax.floatValue()
+						+ " \u00a77reset=" + Modules.zoomResetValue.floatValue() + "x";
 				}
 				String sub = args[1].toLowerCase(Locale.ROOT);
 				try {
 					switch (sub) {
+					case "reset-level":
+						// Reset target of the zoom-reset toggle (2026-08-09):
+						// independent of the base zoom level, defaults 2.0.
+						if (args.length < 3) return "\u00a7cUsage: zoom reset-level <0.6-100.0>";
+						{
+							float v = Float.parseFloat(args[2]);
+							float rmin = (float) Modules.zoomResetValue.min();
+							if (!Float.isFinite(v) || v < rmin)
+								return "\u00a7cZoom reset level must be >= " + rmin;
+							Modules.zoomResetValue.setValue(v);
+							save();
+							return "\u00a77zoom-reset-level: \u00a7f" + Modules.zoomResetValue.floatValue() + "x";
+						}
 					case "smoothness":
 						if (args.length < 3) return "\u00a7cUsage: zoom smoothness <float (>= 1.0)>";
 						{
@@ -526,7 +542,7 @@ public final class FeatureRegistry {
 			}
 			@Override public String getDescription() { return "Zoom settings"; }
 			@Override public List<String> tabComplete(String[] args) {
-				if (args.length == 2) return Arrays.asList("smoothness", "min", "max");
+				if (args.length == 2) return Arrays.asList("smoothness", "min", "max", "reset-level");
 				return Collections.emptyList();
 			}
 		});

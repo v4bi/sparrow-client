@@ -138,21 +138,21 @@ public class HudEditorScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         // Editor backdrop: 60% dim — translucent like the click GUI so the game
-        // stays visible while repositioning HUD elements.
-        ctx.fill(0, 0, width, height, 0x99101016);
+        // stays visible while repositioning HUD elements. Plum-tinted (Theme).
+        ctx.fill(0, 0, width, height, 0x99151026);
         ctx.drawText(textRenderer, Text.literal("\u00a77HUD Editor \u00a78— drag elements, ESC saves & exits"),
-            8, 8, 0xFFC5C6C7, false);
+            8, 8, Theme.FG, false);
 
         for (String key : KEYS) {
             int x = boxX(key), y = boxY(key);
             boolean over = mouseX >= x && mouseX <= x + BOX_W && mouseY >= y && mouseY <= y + BOX_H;
-            int bg = key.equals(dragging) ? 0xFF2A2A3A : (over ? 0xFF26262F : 0xCC1C1C24);
+            int bg = key.equals(dragging) ? Theme.TAB_BG_ACT : (over ? Theme.TAB_BG_HOV : 0xCC201830);
             ctx.fill(x, y, x + BOX_W, y + BOX_H, bg);
-            ctx.fill(x, y, x + 2, y + BOX_H, 0xFF58A6FF);
-            ctx.fill(x, y + BOX_H - 1, x + BOX_W, y + BOX_H, 0xFF3A3A4A);
+            ctx.fillGradient(x, y, x + 2, y + BOX_H, Theme.ACCENT, Theme.ACCENT2);
+            ctx.fill(x, y + BOX_H - 1, x + BOX_W, y + BOX_H, Theme.BORDER);
             int tw = textRenderer.getWidth(key);
             ctx.drawText(textRenderer, Text.literal(key),
-                x + (BOX_W - tw) / 2, y + (BOX_H - 8) / 2, 0xFFC5C6C7, false);
+                x + (BOX_W - tw) / 2, y + (BOX_H - 8) / 2, Theme.FG, false);
         }
     }
 }

@@ -2,12 +2,12 @@
 
 # Sparrow Client
 
-[![Version](https://img.shields.io/badge/Version-#3006202616-24b47e)](https://github.com/stfulua/sparrow-client)
+[![Version](https://img.shields.io/badge/Version-#2026080958-24b47e)](https://github.com/stfulua/sparrow-client)
 [![License](https://img.shields.io/badge/License-GPLv3-blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://www.oracle.com/java/)
 [![Platform](https://img.shields.io/badge/Platform-Fabric%201.21.11-red)](https://fabricmc.net)
 
-<p>Performance client for Minecraft 1.21.11 — 45+ optimizations, 20+ bug fixes, HUD overlays, and visual enhancements.</p>
+<p>Performance client for Minecraft 1.21.11 — 40+ configurable features, 20+ always-on optimizations, HUD overlays, and visual enhancements.</p>
 
 ⚠️ <b>Expect bugs.</b> Found one? Report on our <a href="https://discord.gg/SNzUYWbc5Q">Discord</a>.
 
@@ -17,125 +17,112 @@
 
 ---
 
+### Sparrow Menu (Click GUI)
+
+Press **Right Shift** in-game to open the Sparrow Menu (configurable via the `ui` module: `ui menu` or `ui terminal`). Everything is clickable — no commands needed:
+
+- Category **tabs** span the top edge; the active category's features fill the panel as a tile grid.
+- **Left click** a tile toggles the feature (or opens its settings for numeric/string features).
+- **Right click** a composite tile (gear icon) to open its settings popup: sliders, cycle options, hex color fields.
+- Hover any row for a description tooltip. The **reset icon** on each row restores factory defaults.
+- The **HUD Editor** button (top-right) opens drag-to-reposition mode for HUD elements.
+- **Esc** closes the menu (a second Esc closes an open popup). The menu pauses the game.
+
+The tile grid adapts to your window: 4 columns on wide screens, fewer on small windows, so rows never clip. `gui-scale` (Sparrow tab, 0.5 to 1.5) scales menu elements; `gui-fps` caps FPS while the menu is open.
+
 ### Features
 
 <details open>
-<summary><b>⚡ Performance</b> (25 optimizations)</summary>
+<summary><b>⚡ Sparrow</b> (3)</summary>
 
-- **Lighting Kill** — disables all client-side lighting computation (lightmap, block light, sky light). Zero CPU cost for lighting.
-- **Entity/Item/Orb Culling** — distance-culls items (40b) and entities (128b). Aggregates nearby items+orbs into single rendered entities.
-- **Beacon / Conduit Culling** — don't render beams or conduit effects beyond a distance.
-- **Experience Orb Culling** — culls distant orbs before they reach render.
-- **Packet Distance Cull** — drops entity spawn packets for entities past render range.
-- **Section Builder Culling** — skips rebuild for distant chunk sections.
-- **Distant Chunk LOD** — simplified chunk rendering at distance.
-- **Cloud / Weather / Sky Kill** — disables cloud rendering, rain/snow particles, and sky completely.
-- **Shader Removal** — disables all post-processing shaders (blur, bloom, etc.).
-- **Goal Selector Bloat** — limits entity AI goal evaluations per tick.
-- **Dynamic Uniforms** — reduces uniform update frequency in render passes.
-- **Frame Pacer Control** — frametime capping for consistent frame pacing.
-- **No Error GL Context** — eliminates OpenGL error checking overhead.
-- **Animation Culling** — skips animated texture updates for off-screen sprites.
-- **Block Face Culling** — early-out culling for hidden block faces.
-- **Particle Limiter** — caps particles per frame.
-- **Fog Disable** — completely removes all fog (water, lava, powder snow, blindness, darkness, atmospheric).
-- **Debug Renderer Skip** — eliminates debug renderer overhead.
-- **Nether Render Cap** — separate configurable max render distance for the Nether.
+- **UI** — choose what Right Shift opens: the Sparrow Menu (click GUI) or the legacy terminal.
+- **GUI FPS** — frame cap while the menu is open (5-240, default 60).
+- **GUI Scale** — scales menu elements; the panel always fills the screen (0.5-1.5).
 
 </details>
 
 <details open>
-<summary><b>🎨 Visual</b> (20 enhancements)</summary>
+<summary><b>🎨 Visual</b> (21)</summary>
 
-- **Fullbright** — always max brightness, zero darkness.
-- **Gamma Override** — forces gamma to 15.0 every frame (Sodium-compatible).
-- **No Nausea** — removes portal nausea wobble and overlay.
-- **No Hurt Cam** — removes damage screen shake.
-- **No Fire Overlay** — removes fire overlay when burning.
-- **No Vignette** — removes screen-edge darkening.
-- **No Misc Overlays** — removes potion effect overlays, pumpkin blur, and screen clutter.
-- **View Bob Disable** — disables head bobbing.
-- **Custom Glint** — RGB-configurable enchantment glint color (default: green).
-- **Old Potion Colors** — restores classic pre-1.20 potion color palette.
-- **Small Totem** — reduced totem animation size.
-- **Totem Pop** — subtle totem activation effect.
-- **Clear Fluids** — fully transparent water and lava.
-- **Old Fluid Rendering** — disables modern fluid translucency for clarity.
-- **Entity Shadow Remover** — disables all entity shadows.
-- **Floating Item Scale** — configurable scale for dropped item icons.
-- **ViewModel** — X/Y/Z position + scale customization for first-person items.
-- **Zoom** — optifine-style zoom with configurable sensitivity, min, max, and smoothness.
-- **Boss Bar Skip** — hides the boss health bar overlay.
-- **Block Break Overlay Removed** — removed for performance.
-- **Disconnect Clear** — clean disconnect screen for faster reconnecting.
-
-</details>
-
-<details open>
-<summary><b>🖥️ HUD</b> (13 overlays)</summary>
-
-- **Coordinates** — real-time X/Y/Z in bottom-left.
-- **Ping** — latency display in top-right.
-- **Desync Detection** — alerts when server rubberbands you while moving.
-- **Hit Marker** — visual + sound confirmation on hit land.
-- **True Cooldown** — accurate attack cooldown bar that respects weapon swap.
-- **Shield Status** — shield health remaining and active state.
-- **Fire Timer** — remaining fire duration in readable format.
-- **Attack Cooldown** — cooldown bar on the hotbar.
-- **Cooldown Reset** — visual flash when item use cooldown resets.
-- **Swap Cooldown** — cooldown indicator when switching items.
+- **Small Totem** — shrinks the totem pop animation to the corner of the screen.
+- **No Totem Pop** — removes the totem pop animation entirely.
+- **Old Potions** — restores the classic pre-1.9 potion color palette.
+- **Custom Glint** — replaces the vanilla glint with your own RGB color.
+- **No Misc Overlays** — removes nausea wobble, pumpkin blur and screen clutter.
+- **Remove Shadows** — removes entity and block shadows.
 - **Storage Tooltip** — preview chest/barrel/shulker contents on hover.
-- **Cooldown Reset Tracker** — server-side cooldown sync fix for hit detection.
-- **Position Utility** — all HUD elements positionable via config.
+- **Coordinates** — real-time X/Y/Z in the bottom-left.
+- **Ping** — latency display in the top-right.
+- **Desync Detection** — alerts when the server rubberbands you while moving.
+- **Hit Marker** — visual confirmation when an attack connects.
+- **Shield Status** — shield charge and cooldown on the HUD.
+- **Player Hit** — colors players you can hit (toggle / when it shows / color).
+- **Crosshair** — custom crosshair style and color (off, plus, heart, tiny, dot, x, clover).
+- **View Model** — X/Y/Z position and scale of the held item.
+- **Utility Scale** — extra scale for held utility items (torches, etc.).
+- **Glint** — custom glint toggle plus RGB channels.
+- **Fire Timer** — attack-cooldown bar with HUD position option.
+- **Particles** — particle mode: off, minimal, or vanilla.
+- **Fullbright** — maximum brightness, day and night.
+- **No Mining Fatigue** — removes the mining speed penalty.
 
 </details>
 
 <details open>
-<summary><b>🔧 Bug Fixes</b> (14 fixes)</summary>
+<summary><b>🌍 World</b> (3)</summary>
 
-- **Sprint FOV Smoothing** — fixes MC-20302 (jumpy FOV on sprint toggle).
-- **Shield Desync Fix** — auto-resync shield when right-click doesn't register server-side.
-- **Shield Visibility** — properly displays shield in third-person player model.
-- **Block Resync** — periodic block state sync to prevent ghost blocks.
-- **Ghost Block Detect** — detects blocks that are desynced between client and server.
-- **Inventory Desync Fix** — auto-corrects hotbar slot when inventory gets out of sync.
-- **Rubberband Recovery** — restores sprint/sneak after server position correction.
-- **Knockback Predictor** — predicts knockback for accurate hit confirmation.
-- **Packet Error Ignore** — suppresses benign network errors that would disconnect you.
-- **Paletted Container Fix** — prevents world corruption from palette bugs (MC-267913, MC-269572).
-- **Double Consume Fix** — prevents eating/drinking twice from a single click.
-- **Portal GUI Unlock** — allows interacting with containers while inside a nether portal.
-- **Creative Feature Unlock** — enables operations on non-OP singleplayer worlds.
-- **Sprite Animator Fix** — prevents texture animation memory leaks.
+- **Always Day** — locks the sky to daytime (client-side).
+- **Disable Entity AI** — stops all entity AI and goals (mobs stand still, big CPU win).
+- **Nether Render Cap** — independent max render distance for the Nether (2-20, default 6).
 
 </details>
 
 <details open>
-<summary><b>⌨️ Movement & Input</b></summary>
+<summary><b>🔭 Camera</b> (1)</summary>
 
-- **Toggle Sneak** — toggle-crouch with intelligent interaction bypass (open chests while sneaking).
-- **Smooth Elytra** — auto-stops elytra gliding on ground contact.
-- **Click Relay** — queues item use clicks during cooldown, auto-executes when ready. Prevents missed pearls/food on slot switch.
-- **Mouse Scroll** — scroll wheel customization for zoom and inventory interactions.
+- **Zoom** — optifine-style zoom while holding the zoom key; scroll wheel adjusts the level on the fly. Settings popup: level (0.6-100), smoothness, scroll min/max, reset-on-activate, and the exact reset level.
 
 </details>
 
 <details open>
-<summary><b>🌍 World</b></summary>
+<summary><b>⚙️ Optimization</b> (16)</summary>
 
-- **No Mining Fatigue** — visual-only removal of mining fatigue screen effect.
-- **Always Day** — forces constant daylight brightness level.
-- **Disable Entity AI** — stops all entity AI processing (for singleplayer/custom maps).
-- **Nether Render Cap** — independent render distance slider for the Nether.
-- **Portal GUI Unlock** — interact with blocks/containers while in a portal.
+- **Block LOD** — distance-based LOD: OFF / LOW / PVP / AGGRESSIVE.
+- **Block Model Optimization** — culls hidden block faces early.
+- **Animation Culling** — skips animations for off-screen or distant entities.
+- **Section Culling** — culls unseen chunk sections.
+- **Debug Render Kill / Skip** — disables the per-frame F3 debug rendering.
+- **Shader Removal** — removes expensive post-processing shader passes.
+- **Dynamic UBO Prealloc** — pre-allocates dynamic uniform buffers.
+- **Lighting Cull** — skips light recalc on block changes.
+- **GL No-Error Context** — OpenGL context without error checking.
+- **Pack Icon Scaling** — scales down large resource pack icons.
+- **Item / Entity Culling Distance** — render distance for items and entities.
+- **Particle Cull Distance** — distance beyond which particles are not ticked or rendered.
+- **Adaptive Resolution** — shrinks render resolution when FPS drops below 60 (with a floor setting).
 
 </details>
 
 <details open>
-<summary><b>🛡️ Privacy</b></summary>
+<summary><b>🧰 Misc</b> (2)</summary>
 
-- **Telemetry Killer** — blocks all telemetry transmission to Mojang.
-- **Telemetry Log Disable** — prevents telemetry log file creation.
+- **Disable Mouse Wheel** — disables the scroll wheel entirely.
+- **Ghost Block** — detects and fixes ghost blocks (client/server desync).
+
+</details>
+
+<details open>
+<summary><b>⚡ Always-on optimizations</b> (no toggle)</summary>
+
+- **Fog removal** — water, lava, powder snow, blindness, darkness and atmospheric fog.
+- **Sky / Cloud / Weather kill** — disabled completely.
+- **Beacon / Conduit culling** — no beams or conduit effects beyond a distance.
+- **Experience orb culling** — distant orbs culled before render.
+- **Entity render culling** — occlusion + distance culling, including player occlusion.
+- **Chunk upload throttle + LOD radius** — fixes ghost blocks and speeds up chunk streaming.
+- **Distant chunk LOD** — simplified rendering for far sections.
+- **Goal selector bloat** — limits entity AI goal evaluations.
+- **Section builder culling** — skips rebuilds for distant sections.
 
 </details>
 
@@ -143,59 +130,30 @@
 
 ### Console Commands
 
-Press **Right Shift** in-game to open the Sparrow console. Type any feature name to toggle it. No prefix needed.
+The legacy terminal (opened with `ui terminal` or the `gui` command from the menu) accepts feature names directly — type any feature name to toggle it. No prefix needed.
 
 | Command | Description |
 |---------|-------------|
-| `coords` | Toggle coordinate display |
-| `ping` | Toggle ping display |
-| `desync` | Toggle desync detection |
-| `hitmarker` | Toggle hit marker |
-| `fire-timer` | Toggle fire timer / set position (`on\|off\|pos`) |
-| `particles` | Set particle mode (`off\|minimal\|on`) |
-| `block-lod` | Set block LOD mode (`off\|low\|pvp\|aggressive`) |
-| `sneak` | Toggle sneak |
-| `glint` | Custom glint (`on\|off\|r\|g\|b <0-255>`) |
-| `view` | View model (`x\|y\|z\|size\|utility-scale <value>`) |
-| `zoom` | Zoom (`<level>\|smoothness\|min\|max <value>`) |
-| `help` | Show commands help |
-| `list` | List all features with current values |
+| `coords`, `ping`, `desync`, `hitmarker`, `zoom`, `sneak`, ... | Toggle any feature by name |
+| `list` | List all features with current values, grouped by category |
+| `help` | Show command help |
 | `clear` | Clear console output |
+| `gui` | Open the Sparrow Menu |
+| `ui <menu\|terminal>` | Choose what Right Shift opens |
+| `glint r\|g\|b <0-255>` | Set a glint color channel |
+| `view x\|y\|z\|size <value>` | Adjust the view model |
+| `zoom reset-level\|smoothness\|min\|max <value>` | Adjust zoom settings |
+| `fire-timer on\|off\|pos` | Toggle the fire timer / set its HUD position |
+| `particles off\|minimal\|on` | Set particle mode |
+| `block-lod off\|low\|pvp\|aggressive` | Set block LOD mode |
 
-Most toggles accept `on` / `off` as argument. Omitting the argument flips the current value.
+Most toggles accept `on` / `off`; omitting the argument flips the current value. Tab completes commands and options.
 
 ---
 
 ### Configuration
 
-<details>
-<summary><b>View configurable features</b></summary>
-
-**Visual toggles** (13):
-`small-totem`, `old-potions`, `custom-glint`, `fire-timer`, `no-misc-overlays`, `remove-shadows`, `storage-tooltip`, `coords`, `ping`, `desync`, `hitmarker`, `shield-status`
-
-**Visual settings** (11):
-`view-x`, `view-y`, `view-z`, `view-size`, `utility-scale`, `glint-r`, `glint-g`, `glint-b`, `fire-timer-pos`, `particles`, `block-lod-mode`
-
-**Movement** (0):
-
-**Tweaks** (0):
-
-**Camera** (5):
-`zoom`, `zoom-smoothness`, `zoom-min`, `zoom-max`, `disable-mouse-wheel`
-
-**World** (4):
-`fullbright`, `no-mining-fatigue`, `always-day`, `disable-entity-ai`, `nether-render-cap`
-
-**Optimization** (2):
-`item-culling-distance`, `entity-culling-distance`
-
-**Console** (1):
-`console-fps`
-
-</details>
-
-Configuration is saved to `config/sparrow/config.json` and persists across restarts.
+All settings are saved to `modules.json` in the game directory and persist across restarts. On first run after an update, a legacy `config.json` (if present) is migrated automatically, so no settings are lost. Every feature can also be managed from the Sparrow Menu — the console and the menu read the same registry and can never disagree on valid values.
 
 ---
 

@@ -128,6 +128,13 @@ public final class ModuleManager {
         for (Module m : registry.values()) {
             String key = m.id().replace('-', '_');
             if (m.isComposite()) {
+                // Composite parents are MASTER TOGGLES since 2026-08-09
+                // (e.g. `zoom` gates ZoomMixin). Load the parent's own key
+                // when it's a boolean (written by saveNow). Legacy numeric
+                // values under the parent key (old standalone `zoom`) are NOT
+                // booleans and flow into the children fallback below.
+                Object parentVal = map.get(key);
+                if (parentVal instanceof Boolean pb) m.setEnabled(pb);
                 // Composite parents hold no value of their own; children save
                 // under their own keys. Legacy migration: pre-merge configs
                 // saved the PARENT id with a plain value (e.g. "fire_timer":
@@ -212,8 +219,15 @@ public final class ModuleManager {
         Map<String, Object> map = new HashMap<>();
         map.put("version", "1");
         for (Module m : registry.values()) {
-            if (m.isComposite()) continue; // children save under their own keys
             String key = m.id().replace('-', '_');
+            if (m.isComposite()) {
+                // Composite MASTER TOGGLE state (2026-08-09): `zoom` gates
+                // ZoomMixin; without this the tile would flip to OFF on every
+                // restart even though the user disabled it. Children still
+                // save under their own keys below.
+                map.put(key, m.isEnabled());
+                continue;
+            }
             if (m.isToggleable()) map.put(key, m.isEnabled());
             else if (m.isNumeric()) {
                 // NAN-1: never persist NaN/Infinity — Gson throws on them and

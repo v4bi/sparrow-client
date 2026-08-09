@@ -53,9 +53,16 @@ java {
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add("-Xlint:all")
     options.deprecation = true
+    // Incremental javac: recompiles only classes affected by a change instead
+    // of the whole source set. Loom 1.16 generates refmaps at remapJar time,
+    // so no annotation processor forces full recompiles in the fast loop.
+    options.incremental = true
 }
 jar {
-    from("LICENSE") { rename { "${it}_${base.archivesName}" } }
+    // Local capture: script-scope property lookups inside copy/rename closures
+    // break under the configuration cache (see generateBuildInfo).
+    def archivesName = base.archivesName
+    from("LICENSE") { rename { "${it}_${archivesName}" } }
     manifest {
         attributes(
             'Implementation-Title':       'Sparrow Client',
@@ -73,22 +80,37 @@ jar {
 
 task generateBuildInfo {
     def outputDir = layout.buildDirectory.dir("generated/java/xyz/vprolabs/sparrow")
+    // Local capture: under the configuration cache, script-level properties
+    // (ext.counterFile) are not serializable inside task closures, but plain
+    // local variables captured at configuration time are.
+    def cf = file("build_counter.properties")
     outputs.dir(outputDir)
-    inputs.property("counterState", counterFile.exists() ? counterFile.text : "none")
+    inputs.property("counterState", cf.exists() ? cf.text : "none")
     doLast {
-        def (tag2, todayStr2, counter2) = computeTagInfo()
+        // Self-contained on purpose: the configuration cache cannot serialize
+        // the script-level computeTagInfo() method, so the tag logic lives
+        // here. Behavior is identical to the old closure (date+counter file).
         def props = new Properties()
-        if (counterFile.exists()) counterFile.withInputStream { props.load(it) }
-        props.setProperty("date", todayStr2)
-        props.setProperty("counter", counter2.toString())
-        counterFile.withOutputStream { props.store(it, "Build counter") }
+        if (cf.exists()) cf.withInputStream { props.load(it) }
+        def now = new Date(); def cal = Calendar.instance; cal.time = now
+        def day = cal.get(Calendar.DAY_OF_MONTH)
+        def month = cal.get(Calendar.MONTH) + 1
+        def year = cal.get(Calendar.YEAR)
+        def todayStr = String.format("%04d-%02d-%02d", year, month, day)
+        def lastDate = props.getProperty("date", "")
+        def counter = 1
+        if (lastDate == todayStr) counter = (props.getProperty("counter", "0") as int) + 1
+        def tag2 = String.format("%04d%02d%02d%d", year, month, day, counter)
+        props.setProperty("date", todayStr)
+        props.setProperty("counter", counter.toString())
+        cf.withOutputStream { props.store(it, "Build counter") }
         def dir = outputDir.get().asFile; dir.mkdirs()
         def src = new File(dir, "BuildInfo.java")
         src.text = """package xyz.vprolabs.sparrow;
 public final class BuildInfo {
     public static final String BUILD_TAG = "${tag2}";
-    public static final String BUILD_DATE = "${todayStr2}";
-    public static final int BUILD_NUMBER = ${counter2};
+    public static final String BUILD_DATE = "${todayStr}";
+    public static final int BUILD_NUMBER = ${counter};
     private BuildInfo() {}
 }"""
     }

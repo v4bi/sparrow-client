@@ -44,6 +44,14 @@ public class MinecraftClientMixin {
             ModuleManager.load();
             SparrowGlintLayers.init();
 
+            // Simulation distance force (2026-08-09 user spec): the option
+            // must be 1 after every launch, whatever options.txt or any load
+            // order weirdness did. setValue triggers the option's own
+            // onChanged callback (GameOptionsDistanceMixin), which persists
+            // options.txt and reloads the world renderer when in-game.
+            client.options.getSimulationDistance().setValue(1);
+            SparrowLogger.info("Forced simulation distance to 1");
+
             // Version check runs once per session, from here (first render
             // frame). It used to ride on ServerSafety.sync(), whose only
             // entry point (isFeatureDisabled) has no consumers left, so the

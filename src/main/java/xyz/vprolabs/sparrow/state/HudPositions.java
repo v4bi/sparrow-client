@@ -6,13 +6,23 @@ import java.util.Map;
 public class HudPositions {
     private static final Map<String, int[]> offsets = new HashMap<>();
 
+    // Shared default: getOffset() runs every HUD frame; passing "new int[]{0,0}"
+    // here evaluates the default EAGERLY on every call even when the key exists,
+    // allocating a throwaway array 3+ times per frame. A single constant is safe:
+    // call-site audit (2026-08) shows all 9 callers only READ off[0]/off[1],
+    // none retain or mutate the returned array (HudMoveState.activate copies
+    // into a fresh array, renderers copy into locals immediately).
+    // Rejected: returning a fresh copy when absent — the array is immutable in
+    // practice, so a shared ZERO costs nothing and never leaks writes.
+    private static final int[] ZERO = {0, 0};
+
     private static final String[] KNOWN_KEYS = {
         "coords", "ping", "desync", "fire-timer", "ghost-block", "knockback", "shield",
         "hotbar", "status-bars"
     };
 
     public static int[] getOffset(String key) {
-        return offsets.getOrDefault(key, new int[]{0, 0});
+        return offsets.getOrDefault(key, ZERO);
     }
 
     public static void setOffset(String key, int x, int y) {

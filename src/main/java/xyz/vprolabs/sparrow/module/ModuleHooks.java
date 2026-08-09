@@ -23,13 +23,16 @@ public final class ModuleHooks {
             // manager is not available yet (SparrowGlintLayers itself guards).
             SparrowGlintLayers.refresh();
         }
-        case "zoom" -> {
+        case "zoom-level" -> {
             // ZoomMixin uses SparrowZoomState.targetZoom as its target while
-            // the zoom key is held. Console/GUI/load changes to the `zoom`
-            // module set only Modules.zoomLevel, leaving the state stuck on
-            // whatever the scroll wheel last wrote (or the 2026-08-01 default
-            // 4.0). Mirror every change into the state so saved and adjusted
-            // values actually take effect without requiring a wheel notch.
+            // the zoom key is held. Console/GUI/load changes to the zoom level
+            // set only Modules.zoomLevel, leaving the state stuck on whatever
+            // the scroll wheel last wrote. Mirror every change into the state
+            // so saved and adjusted values actually take effect without
+            // requiring a wheel notch. (2026-08-09: this case used to read
+            // "zoom" — the leaf id — which the 2026-08-09 composite rename
+            // made the PARENT id; the parent's setEnabled would then zero
+            // targetZoom through value()==0. The case must follow the leaf.)
             SparrowZoomState.targetZoom = m.value();
         }
         case "crosshair-color" -> {

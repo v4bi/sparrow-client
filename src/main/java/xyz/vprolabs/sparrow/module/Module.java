@@ -53,6 +53,22 @@ public final class Module {
     private Module parent;
     private Map<String, Module> children;
 
+    // Color-editable module (2026-08-09 user spec: "RGB color selector, add
+    // it to all places where you can select custom HEX/RGB color"). Marked
+    // on string-hex modules (crosshair-color) and composite groups whose
+    // children are RGB channels (glint). The GUI renders an RGB picker
+    // (swatch + sliders + hex) for isColor() modules.
+    private boolean color;
+
+    // Conditional popup rows (2026-08-09): a child set to visibleWhen(sibling)
+    // only appears in the composite popup while the SIBLING module is enabled.
+    // "zoom-reset-value" is hidden until the "zoom-reset" toggle is on — a
+    // setting that has no meaning while its trigger is disabled.
+    private String visibleWhenSibling;
+
+    // Hover description shown in the click GUI tooltip. NULL = no tooltip.
+    private String description;
+
     // Toggle module
     public Module(String id, String category, boolean defaultEnabled) {
         this(id, category, defaultEnabled, false, false, 0, 0, 0, 1, false, false, null, null, null);
@@ -90,7 +106,14 @@ public final class Module {
     // The children keep their own ids/console commands/config keys — nothing
     // downstream changes. A child may only belong to one composite.
     public static Module group(String id, String category, Module... children) {
-        Module m = new Module(id, category, false, false, false, 0, 0, 0, 1, false, true,
+        return group(id, category, false, children);
+    }
+
+    // Composite parent with a MASTER TOGGLE: the GUI tile shows ON/OFF and a
+    // click flips the whole feature (e.g. `zoom` gates ZoomMixin). The parent
+    // state persists via ModuleManager (composites now save their own key).
+    public static Module group(String id, String category, boolean defaultEnabled, Module... children) {
+        Module m = new Module(id, category, defaultEnabled, false, false, 0, 0, 0, 1, false, true,
             null, null, null);
         m.children = new LinkedHashMap<>();
         for (Module c : children) {
@@ -146,6 +169,36 @@ public final class Module {
     public boolean hasParent() { return parent != null; }
     public Map<String, Module> children() { return children; }
     public Module child(String id) { return children == null ? null : children.get(id); }
+
+    /** Hover description for the click GUI tooltip; null = no tooltip. */
+    public String description() { return description; }
+
+    /** Fluent: attach a hover description, e.g.
+     *  {@code new Module("fullbright", "Visual", false).withDescription("...")}. */
+    public Module withDescription(String desc) {
+        this.description = desc;
+        return this;
+    }
+
+    /** Conditional popup row: only shown in the composite popup while the
+     *  named SIBLING module (same composite) is enabled. */
+    public Module withVisibleWhen(String siblingId) {
+        this.visibleWhenSibling = siblingId;
+        return this;
+    }
+
+    /** Fluent: mark this module as a color (hex string or RGB channel
+     *  composite) so the GUI offers the RGB picker for it. */
+    public Module withColor() {
+        this.color = true;
+        return this;
+    }
+
+    /** True when this module is a color (see withColor()). */
+    public boolean isColor() { return color; }
+
+    /** Sibling module id this row is conditional on, or null for always-on. */
+    public String visibleWhen() { return visibleWhenSibling; }
 
     /** True when the module currently holds its factory default — the GUI
      *  dims the Reset icon for rows that have nothing to reset. */

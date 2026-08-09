@@ -68,6 +68,10 @@ public class SparrowMod implements ClientModInitializer {
         SodiumCompat.init();
         ModCompatibilityChecker.check();
         SparrowCrashHandler.register();
+        // Sound events are deliberately NOT registered anywhere: registration
+        // shifts vanilla sound raw IDs (mixed-up sounds on non-synced
+        // servers), and SoundManager resolves playback by id from
+        // sounds.json alone. See SparrowSounds for the full history.
         SparrowLogger.info("=== Sparrow Mod " + BuildInfo.BUILD_TAG + " initializing ===");
         SparrowLogger.info("Java: " + System.getProperty("java.version"));
         SparrowLogger.info("Working dir: " + System.getProperty("user.dir", "."));

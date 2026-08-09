@@ -12,6 +12,11 @@ public class SparrowZoomState {
     // FOV tick. Previously hardcoded 4.0, which silently ignored both the
     // saved value and the default until the scroll wheel was used.
     public static double targetZoom = 2.0;
+    // Edge-detection latch for ZoomMixin: tracks whether the zoom key was
+    // held on the previous FOV tick so the zoom-reset toggle can fire exactly
+    // once per fresh key press (isPressed() alone stays true for the whole
+    // hold duration).
+    public static boolean wasKeyHeld = false;
 
     private SparrowZoomState() {}
 }

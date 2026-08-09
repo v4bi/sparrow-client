@@ -47,19 +47,22 @@ if (!Modules.fireTimer.child("fire-timer-enabled").isEnabled()) {
             return;
         }
 
-        int ticks = living.getFireTicks();
-        if (ticks <= 0) {
-            HudState.reset();
+        // Countdown is driven by FireTimerTickMixin (ClientPlayerEntity.tick
+        // HEAD). The entity's own getFireTicks() is useless at render time:
+        // vanilla 1.21.11 zeroes it in Entity.baseTick() every client tick,
+        // so reading it here showed a frozen 8.0s in fire and nothing for
+        // ignitions without a client-side collision (flint, fire aspect).
+        if (HudState.fireTicks < 0) {
             return;
         }
 
         if (!HudState.logged) {
             HudState.logged = true;
-            SparrowLogger.debug("FireTimerMixin: fire timer enabled, showing fire ticks: " + ticks);
+            SparrowLogger.debug("FireTimerMixin: fire timer enabled, showing fire ticks: " + HudState.fireTicks);
         }
 
         TextRenderer font = self.getTextRenderer();
-        FireTimerRenderer.render(context, font, ticks);
+        FireTimerRenderer.render(context, font, HudState.fireTicks);
 }
 
 }

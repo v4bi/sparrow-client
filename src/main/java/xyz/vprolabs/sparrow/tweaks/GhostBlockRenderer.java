@@ -13,6 +13,15 @@ public final class GhostBlockRenderer {
     private static int labelW = -1;
     private static final String PREFIX = "\u00a7cGhost: ";
 
+    // PREFIX + count + " blocks" concatenated a fresh String every frame.
+    // Cache by count, same pattern as labelW (which only caches the WIDTH).
+    // -1 sentinel is safe: render() early-returns when count == 0, so the
+    // first reachable count is >= 1 and always rebuilds. Rejected: caching
+    // only the width while rebuilding the text — the String alloc is the
+    // actual garbage, the width lookup is free.
+    private static int cachedCount = -1;
+    private static String cachedText = null;
+
     private GhostBlockRenderer() {}
 
     public static void render(DrawContext ctx, TextRenderer font) {
@@ -21,7 +30,11 @@ public final class GhostBlockRenderer {
         int count = GhostBlockState.ghostBlocks.size();
         if (count == 0) return;
 
-        String text = PREFIX + count + " blocks";
+        if (count != cachedCount) {
+            cachedCount = count;
+            cachedText = PREFIX + count + " blocks";
+        }
+        String text = cachedText;
         int tw = font.getWidth(text);
         if (labelW < 0) labelW = tw;
 

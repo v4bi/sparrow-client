@@ -1,5 +1,6 @@
 package xyz.vprolabs.sparrow.console;
 
+import xyz.vprolabs.sparrow.gui.Theme;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -12,12 +13,14 @@ import java.util.List;
 
 public class SparrowConsoleScreen extends Screen {
 
-	private static final int BG       = 0xFF0B0C10;  // launcher BG
+	// Midnight Sakura palette (2026-08-08): FG/DIM/PROMPT come from the shared
+	// Theme class; the terminal keeps its own BG (plum-black) and caret colors.
+	private static final int BG       = 0xFF0D0A16;  // plum-black (was launcher 0x0B0C10)
 	private static final int INPUT_BG = 0xFF000000;
-	private static final int FG       = 0xFFC5C6C7;  // launcher FG
-	private static final int DIM      = 0xFF555555;  // launcher DIM
-	private static final int PROMPT   = 0xFF58A6FF;
-	private static final int CURSOR   = 0xFFAAAAAA;
+	private static final int FG       = Theme.FG;    // soft lavender
+	private static final int DIM      = Theme.DIM;   // muted lavender
+	private static final int PROMPT   = Theme.ACCENT; // sakura pink
+	private static final int CURSOR   = 0xFFBFAEDC;  // lavender-white caret
 	private static final int LETTER_GAP = 3;          // launcher letter-spacing
 	private static final int PAD      = 12;
 	private static final int INPUT_H  = 26;
@@ -150,7 +153,7 @@ public class SparrowConsoleScreen extends Screen {
 		if (!sugs.isEmpty()) {
 			int sugH = sugs.size() * (textRenderer.fontHeight + 2) + 4;
 			int sugY = inputY - sugH - 2;
-			context.fill(panelX, sugY, panelX + panelW, sugY + sugH, 0xEE0D1117);
+			context.fill(panelX, sugY, panelX + panelW, sugY + sugH, 0xEE161028);
 			int sy = sugY + 2;
 			for (int i = 0; i < sugs.size(); i++) {
 				int clr = (i == SparrowConsoleState.suggestionIndex) ? PROMPT : DIM;

@@ -1,5 +1,6 @@
 package xyz.vprolabs.sparrow.console;
 
+import xyz.vprolabs.sparrow.gui.Theme;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,7 +32,7 @@ public class SparrowConsoleState {
     }
 
     public static void addLine(String text) {
-        addLine(text, 0xFFE8EDF5);
+        addLine(text, Theme.FG);
     }
 
     public static void addLine(String text, int color) {

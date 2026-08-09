@@ -18,11 +18,22 @@ public final class HudRenderer {
     private static int desyncWarnW = -1;
     private static int pingW = -1;
 
+    // Render path is single-threaded (render thread); every call site copies
+    // pos[0]/pos[1] into locals IMMEDIATELY after addOffset returns, and none
+    // retains the returned array across calls (verified 2026-08). So a shared
+    // scratch array is safe: fill in place, zero allocations per frame.
+    // Rejected: per-call "new int[]" — that is the 3x/frame allocation this
+    // change removes. Rejected: returning offsets-relative coords — would
+    // ripple into HudEditorScreen/HudMoveState callers.
+    private static final int[] SCRATCH = new int[2];
+
     private HudRenderer() {}
 
     private static int[] addOffset(String key, int x, int y) {
         int[] off = HudPositions.getOffset(key);
-        return new int[]{x + off[0], y + off[1]};
+        SCRATCH[0] = x + off[0];
+        SCRATCH[1] = y + off[1];
+        return SCRATCH;
     }
 
     public static void render(DrawContext ctx, TextRenderer font) {
@@ -37,7 +48,10 @@ public final class HudRenderer {
 
         // Coords
         if (Modules.coords.isEnabled()) {
-            String text = String.format("XYZ: %.0f / %.0f / %.0f",
+            // Cached in HudState: rebuilt only when the int-truncated position
+            // changes (~1x/sec walking), identical text otherwise. The cache
+            // keeps %.0f HALF_UP formatting on rebuild, so output is unchanged.
+            String text = HudState.coordsString(
                 client.player.getX(), client.player.getY(), client.player.getZ());
             int[] pos = addOffset("coords", PADDING, scaledH - 55);
             int x = pos[0], y = pos[1];
@@ -51,7 +65,9 @@ public final class HudRenderer {
 
         // Ping (cached width)
         if (Modules.ping.isEnabled() && HudState.currentPing > 0) {
-            String text = "Ping: " + HudState.currentPing + "ms";
+            // Cached in HudState by ping value (rebuilds only when the ping
+            // reading actually changes, not every frame).
+            String text = HudState.pingString(HudState.currentPing);
             int tw = font.getWidth(text);
             if (pingW < 0) pingW = tw;
             int[] pos = addOffset("ping", scaledW - tw - PADDING - 1, PADDING);

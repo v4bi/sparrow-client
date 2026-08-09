@@ -15,6 +15,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
 import net.minecraft.sound.SoundEvents;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -26,9 +27,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 })
 public class HitConfirmMixin {
 
+    // mixinLoaded was called from the InGameHud.render TAIL hook, i.e. EVERY
+    // frame: the first call does a log() write and each later call still pays
+    // a ConcurrentHashMap add() on the hot path (SparrowLogger's own one-shot
+    // registry saves the file I/O, not the per-frame set operation). Guard all
+    // three call sites with one flag so the log fires exactly once per session,
+    // regardless of which hook runs first (render can precede the first attack
+    // event). Static so the flag survives across the copied-in callback methods.
+    @Unique
+    private static boolean sparrow_hitConfirmLogged = false;
+
     @Inject(method = "attackEntity", at = @At("HEAD"), require = 0)
     private void sparrow_trackAttack(PlayerEntity player, Entity target, CallbackInfo ci) {
-            SparrowLogger.mixinLoaded("HitConfirmMixin");
+            sparrow_logOnce();
             if (target != null) {
                 HudState.registerAttack(target.getId());
             }
@@ -36,7 +47,7 @@ public class HitConfirmMixin {
 
     @Inject(method = "onEntityStatus", at = @At("HEAD"), require = 0)
     private void sparrow_onEntityStatus(EntityStatusS2CPacket packet, CallbackInfo ci) {
-            SparrowLogger.mixinLoaded("HitConfirmMixin");
+            sparrow_logOnce();
             byte status = packet.getStatus();
             switch (status) {
                 case 2:
@@ -67,8 +78,18 @@ public class HitConfirmMixin {
 
     @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void sparrow_renderHitConfirm(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        SparrowLogger.mixinLoaded("HitConfirmMixin");
+        sparrow_logOnce();
         if (MinecraftClient.getInstance().options.hudHidden) return;
             HitConfirmRenderer.render(context, MinecraftClient.getInstance().textRenderer);
+    }
+
+    // Private helper: Mixin never injects private methods of the mixin class
+    // into the target, so no @Unique needed on the method itself (the field
+    // stays @Unique per project rule: mixin fields must be @Unique private).
+    private static void sparrow_logOnce() {
+        if (!sparrow_hitConfirmLogged) {
+            sparrow_hitConfirmLogged = true;
+            SparrowLogger.mixinLoaded("HitConfirmMixin");
+        }
     }
 }
