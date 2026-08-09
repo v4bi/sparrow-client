@@ -37,6 +37,16 @@ public final class Modules {
     // Steps of 0.05 so the slider stays usable.
     public static final Module guiScale = new Module("gui-scale", "Sparrow", 1.0, 0.5, 1.5, 0.05, false)
         .withDescription("Scales the menu's elements (tabs, rows, icons). The panel always fills the screen.");
+    // Theme (2026-08-10 user spec): palette for the Sparrow Menu. Options use
+    // the Name/DisplayName pair — terminal accepts "default"/"hanami"
+    // (space-free), the GUI cycle row shows "Default"/"Hanami". "Default"
+    // keeps the current Midnight Sakura look; "Hanami" is the light Japanese
+    // palette (Theme.apply()). Applies instantly from any entry point via
+    // ModuleHooks; the click GUI and HUD editor read Theme.* per frame.
+    public static final Module theme = Module.withLabels("theme", "Sparrow", "default",
+        "default", "Default",
+        "hanami", "Hanami")
+        .withDescription("Sparrow Menu color theme: Default (Midnight Sakura, dark) or Hanami (light Japanese).");
 
     // ── Visual ─────────────────────────────────────────────────────────
 
@@ -259,6 +269,16 @@ public final class Modules {
         .withDescription("Shrinks the render resolution when FPS drops below 60, restores it when FPS recovers. Smoothness for smoothness.");
     public static final Module resolutionMin           = new Module("resolution-min", "Optimization", 0.66, 0.5, 1.0, 0.01, false)
         .withDescription("Lowest render scale adaptive-resolution may drop to: 0.5 = half resolution, 0.83 = barely noticeable, 1.0 = full.");
+    // ── Experimental ──────────────────────────────────────────────────
+    // Atlas disk cache (2026-08-09, user request). BUGGY-LOCKED 2026-08-10:
+    // cache-HIT boots render invisible GUI sprites (atlas dump showed the
+    // button region fully transparent even though the blob pixels are
+    // correct) and the root cause is still unknown. Locked = default OFF,
+    // impossible to enable from GUI/console/config, forced off on every
+    // startup by ModuleManager (withLocked()). The mixin gates on
+    // isEnabled() so it is now dead code until the feature is fixed.
+    public static final Module atlasCache              = new Module("atlas-cache", "Experimental", false).withLocked()
+        .withDescription("BUGGY: renders invisible sprites on cache-hit boots. Locked until fixed.");
 
     // ── Misc ───────────────────────────────────────────────────────────
 

@@ -88,6 +88,7 @@
         "Tweaks.SpriteAnimatorFixMixin",
         "Tweaks.SpriteAnimatorFrameFixMixin",
         "Utils.SpriteContentsAccessor",
+        "Utils.SpriteContentsAnimMetaMixin",
         "Optimization.Render.WeatherParticleSkipMixin",
         "Optimization.WorldRendererRenderKillMixin",
         "NotVanilla.SkyRenderKillMixin",

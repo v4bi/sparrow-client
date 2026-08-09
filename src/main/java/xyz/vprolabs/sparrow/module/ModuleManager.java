@@ -126,6 +126,15 @@ public final class ModuleManager {
     private static void applyToModules(Map<String, Object> map) {
         if (map == null) return;
         for (Module m : registry.values()) {
+            // LOCK-1 (2026-08-10): BUGGY-locked modules are forced OFF on
+            // every startup and their saved value is never applied — a stale
+            // modules.json from before the lock must not re-enable the broken
+            // atlas-cache feature. setEnabled(false) is a no-op here (already
+            // off), so the skip also saves the JSON key lookups.
+            if (m.isLocked()) {
+                m.setEnabled(false);
+                continue;
+            }
             String key = m.id().replace('-', '_');
             if (m.isComposite()) {
                 // Composite parents are MASTER TOGGLES since 2026-08-09

@@ -7,6 +7,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.packet.s2c.play.DeathMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.HealthUpdateS2CPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,26 +17,51 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayNetworkHandler.class)
 public class DeathSoundMixin {
 
-    // Dedup latch (2026-08-09): onDeathMessage can fire more than once per
-    // death in edge cases (the vanilla handler itself guards repeats via
-    // ClientPlayerEntity.showsDeathScreen). 1000ms window absorbs re-fires
-    // while still allowing a legit death -> respawn -> death cycle.
+    // Dedup latch (2026-08-09): the health hook and the death-message hook
+    // both fire for the same death on vanilla servers. 1000ms window absorbs
+    // the double-fire while still allowing death -> respawn -> death cycles.
     @Unique
     private static long sparrow_lastDeathSoundTime = 0L;
 
+    // Per-connection alive flag (2026-08-09): duels servers (and many
+    // minigame servers) never send DeathMessageS2CPacket — the death screen
+    // never opens and the death message arrives as plain system chat — so
+    // the packet hook alone never fires. Health dropping to 0 is the only
+    // server-agnostic death signal. sparrow_wasAlive is an instance field on
+    // the handler: each connection starts alive, goes false on the 0-health
+    // update, and flips back true on the respawn health update.
+    @Unique
+    private boolean sparrow_wasAlive = true;
+
+    // Primary trigger: health update to 0 = player death, works on ANY
+    // server (vanilla, paper, duels, etc.) because the server must sync the
+    // player's health. Fires at TAIL so the packet is already applied.
+    @Inject(method = "onHealthUpdate", at = @At("TAIL"))
+    private void sparrow_onHealthUpdate(HealthUpdateS2CPacket packet, CallbackInfo ci) {
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        if (player == null) return;
+        boolean alive = packet.getHealth() > 0.0F;
+        if (!alive && sparrow_wasAlive) {
+            sparrow_wasAlive = false;
+            tryPlayDeathSound("health-based");
+        } else if (alive) {
+            sparrow_wasAlive = true;
+        }
+    }
+
+    // Secondary trigger: the vanilla death message packet (opens the death
+    // screen). Kept for singleplayer and vanilla-style servers; the shared
+    // dedup latch prevents double playback with the health hook.
     @Inject(method = "onDeathMessage", at = @At("HEAD"))
     private void sparrow_onDeath(DeathMessageS2CPacket packet, CallbackInfo ci) {
-        // Hook choice (2026-08-09, deviates from the original PlayerEntity
-        // onDeath spec): javap proves 1.21.11 never invokes PlayerEntity
-        // onDeath on the client. The client learns of its own death only via
-        // the DeathMessageS2CPacket handled here (it opens the DeathScreen
-        // directly). Server-side onDeath runs on the integrated server in
-        // singleplayer as a ServerPlayerEntity, which the old instanceof
-        // ClientPlayerEntity check would have discarded anyway. This packet
-        // hook fires for the local player in singleplayer AND multiplayer.
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (player == null) return;
         if (packet.playerId() != player.getId()) return;
+        tryPlayDeathSound("death-message");
+    }
+
+    @Unique
+    private void tryPlayDeathSound(String reason) {
         if (!Modules.deathSound.isEnabled()) return;
         long now = System.currentTimeMillis();
         if (now - sparrow_lastDeathSoundTime < 1000) return;
@@ -46,7 +72,7 @@ public class DeathSoundMixin {
         // in sparrow-client.log (2026-08-09: user reported no playback).
         String variant = Modules.deathSound.child("death-sound-variant").stringValue();
         float volume = (float) Modules.deathSound.child("death-sound-volume").value() / 100.0F;
-        SparrowLogger.debug("Death sound playing: variant=" + variant + " volume=" + volume);
+        SparrowLogger.debug("Death sound playing: reason=" + reason + " variant=" + variant + " volume=" + volume);
         SparrowSounds.playDeath(variant, volume);
     }
 }

@@ -4,6 +4,8 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.option.TextureFilteringMode;
+import net.minecraft.client.resource.metadata.AnimationFrameResourceMetadata;
+import net.minecraft.client.resource.metadata.AnimationResourceMetadata;
 import net.minecraft.client.texture.AtlasManager;
 import net.minecraft.client.texture.MissingSprite;
 import net.minecraft.client.texture.NativeImage;
@@ -20,6 +22,8 @@ import net.minecraft.resource.ResourceReloader;
 import net.minecraft.resource.ZipResourcePack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -28,7 +32,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import xyz.vprolabs.sparrow.BuildInfo;
 import xyz.vprolabs.sparrow.logging.SparrowLogger;
 import xyz.vprolabs.sparrow.mixin.Utils.AtlasCompletableEntryAccessor;
 import xyz.vprolabs.sparrow.mixin.Utils.AtlasEntryAccessor;
@@ -37,12 +40,14 @@ import xyz.vprolabs.sparrow.mixin.Utils.AtlasStitchAccessor;
 import xyz.vprolabs.sparrow.mixin.Utils.DirectoryResourcePackAccessor;
 import xyz.vprolabs.sparrow.mixin.Utils.SpriteContentsAccessor;
 import xyz.vprolabs.sparrow.mixin.Utils.SpriteInvoker;
+import xyz.vprolabs.sparrow.module.Modules;
 import xyz.vprolabs.sparrow.state.AtlasCache;
 import xyz.vprolabs.sparrow.state.AtlasCache.AtlasMeta;
 import xyz.vprolabs.sparrow.state.AtlasCache.CacheData;
 import xyz.vprolabs.sparrow.state.AtlasCache.SpriteMeta;
 import xyz.vprolabs.sparrow.state.CacheFingerprint;
 import xyz.vprolabs.sparrow.state.CacheFingerprint.PackStamp;
+import xyz.vprolabs.sparrow.state.SpriteAnimCapture;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,6 +55,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,6 +67,8 @@ import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.zip.CRC32C;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Atlas disk cache.
@@ -97,17 +105,27 @@ import java.util.zip.CRC32C;
  * irrelevant; the Sprite objects rebuilt on hit still carry the vanilla
  * padding so UVs are pixel-identical.
  *
- * Exclusion: an animated sprite's base image is the full animation strip,
- * but only frame 0 is ever placed in the atlas slot, so the strip cannot be
- * reconstructed from the base image. Any atlas containing an animated sprite
- * is therefore never cached (block/particle atlases fall back to vanilla;
- * item/banner/shield atlases cache).
+ * Animated sprites (2026-08-09): an animated sprite's base image is the full
+ * animation strip, but only frame 0 is ever placed in the atlas slot, so the
+ * strip cannot be reconstructed from the base image. Each animated sprite is
+ * therefore stored as its own strip blob (SPST magic) plus the original
+ * AnimationResourceMetadata (captured by SpriteContentsAnimMetaMixin at the
+ * SpriteContents constructor), and the hit path rebuilds the SpriteContents
+ * by passing that metadata back through the same constructor. Block/particle/
+ * gui atlases are now cached too; before this change any atlas containing an
+ * animated sprite fell back to vanilla on every boot.
  *
  * Cache-hit tradeoff: sprite-level mipmap strategy from texture mcmeta
  * (blur/clamp) and animation interpolate flag are not stored (SpriteMeta
  * contract is fixed); hit sprites use MipmapStrategy.AUTO. Vanilla sprites
  * without blur/clamp mcmeta are byte-identical; the rare blurred sprites
  * differ only in mip generation.
+ *
+ * Toggle: the whole cache is gated on Modules.atlasCache (Experimental
+ * category, default ON). The module value is read at the first boot reload
+ * BEFORE ModuleManager.load() (deferred-init contract), so the first reload
+ * sees the default ON state; the saved value applies from the next reload.
+ * See docs/AtlasCache-fixes.md.
  */
 @Mixin(AtlasManager.class)
 public abstract class AtlasCacheMixin {
@@ -132,21 +150,43 @@ public abstract class AtlasCacheMixin {
 
     @Inject(method = "prepareSharedState", at = @At("HEAD"))
     private void sparrow_prepareHead(ResourceReloader.Store store, CallbackInfo ci) {
+        if (!Modules.atlasCache.isEnabled()) return;
+        // SpriteContents ctor captures from the PREVIOUS cycle must not bleed
+        // into this one: the ctor runs during this cycle's loads, and the
+        // capture drains by identity, so stale entries can never be matched,
+        // but clearing keeps the map bounded.
+        SpriteAnimCapture.reset();
         sparrow_cachedEntries = null;
         sparrow_cacheData = null;
         CacheFingerprint current = sparrow_currentFingerprint();
-        if (current == null) return;
+        if (current == null) {
+            SparrowLogger.debug("AtlasCache: cache miss (fingerprint unavailable)");
+            return;
+        }
         CacheData data = AtlasCache.readJson();
-        // Fingerprint covers MC version, Sparrow build, mip level and every
-        // pack file: equal fingerprint -> byte-identical atlas output.
-        if (data == null || !current.matches(data.fingerprint)) return;
-        if (!AtlasCache.allBlobsPresent(data)) return;
+        if (data == null) {
+            SparrowLogger.debug("AtlasCache: cache miss (no cache.json)");
+            return;
+        }
+        // Fingerprint covers MC version, atlas mip level and every pack
+        // file (folder files and mod jars are stamped by content; see
+        // CacheFingerprint): equal fingerprint -> byte-identical atlas
+        // output.
+        if (!current.matches(data.fingerprint)) {
+            SparrowLogger.debug("AtlasCache: cache miss (fingerprint mismatch)");
+            return;
+        }
+        if (!AtlasCache.allBlobsPresent(data)) {
+            SparrowLogger.debug("AtlasCache: cache miss (blobs missing)");
+            return;
+        }
         sparrow_cacheData = data;
         SparrowLogger.log("BOOT", "atlas-cache: cache hit (" + data.atlases.size() + " atlases)");
     }
 
     @Inject(method = "prepareSharedState", at = @At("TAIL"))
     private void sparrow_prepareTail(ResourceReloader.Store store, CallbackInfo ci) {
+        if (!Modules.atlasCache.isEnabled()) return;
         // Valid cache this cycle: HEAD already decided the reload will use
         // it; re-capturing would just rewrite identical blobs.
         if (sparrow_cacheData != null) return;
@@ -165,6 +205,7 @@ public abstract class AtlasCacheMixin {
     private void sparrow_reloadHead(ResourceReloader.Store store, Executor prepareExecutor,
                                     ResourceReloader.Synchronizer synchronizer, Executor applyExecutor,
                                     CallbackInfoReturnable<CompletableFuture<Void>> cir) {
+        if (!Modules.atlasCache.isEnabled()) return;
         if (sparrow_cacheData == null) return;
         // Pre-completing a preparation future resolves readyForUpload (its
         // allOf wraps preparations.thenCompose(StitchResult::readyForUpload)
@@ -247,14 +288,10 @@ public abstract class AtlasCacheMixin {
             for (Map.Entry<Identifier, Object> defEntry : ((AtlasManagerAccessor) (Object) this).getEntriesByDefinitionId().entrySet()) {
                 SpriteAtlasTexture atlas = ((AtlasEntryAccessor) defEntry.getValue()).getAtlas();
                 SpriteLoader.StitchResult result = atlasStitch.getPreparations(defEntry.getKey()).join();
-                if (!sparrow_cacheable(result)) {
-                    SparrowLogger.debug("AtlasCache: skip " + atlas.getId().getPath()
-                            + " (contains animated sprite)");
-                    continue;
-                }
                 data.atlases.add(sparrow_captureAtlas(atlas, result));
             }
-            SparrowLogger.log("BOOT", "atlas-cache: captured " + data.atlases.size() + " atlases");
+            SparrowLogger.log("BOOT", "atlas-cache: captured " + data.atlases.size() + " atlases"
+                    + " (" + sparrow_stripCount + " animated strips)");
             // writeJson must come last: cache.json only exists once all blobs
             // are on disk, so a partial write set never validates.
             AtlasCache.writeJson(data);
@@ -269,16 +306,9 @@ public abstract class AtlasCacheMixin {
         }
     }
 
-    /** Animated sprites are never cached (strip not reconstructible). */
+    /** Counts animated strips written during the current capture (logging). */
     @Unique
-    private boolean sparrow_cacheable(SpriteLoader.StitchResult result) {
-        for (Sprite sprite : result.sprites().values()) {
-            if (sprite.getContents().isAnimated()) {
-                return false;
-            }
-        }
-        return true;
-    }
+    private int sparrow_stripCount;
 
     /** Builds the canvas and writes the blob; returns the json metadata. */
     @Unique
@@ -296,21 +326,88 @@ public abstract class AtlasCacheMixin {
                 int w = contents.getWidth();
                 int h = contents.getHeight();
                 NativeImage base = ((SpriteContentsAccessor) (Object) contents).getMipmapLevelsImages()[0];
-                // copyRect(to, x, y, w, h, fromX, fromY, ...): copies from
-                // THIS image at (fromX, fromY) into `to` at (x, y). The
-                // source is the sprite's own base image (w x h at 0,0); the
-                // destination is the sprite's slot in the atlas canvas. The
-                // earlier version had these swapped (source = atlas coords
-                // read from a 16x16 sprite image), which threw "outside of
-                // image bounds" on the first sprite (2026-08-09).
-                base.copyRect(canvas, sprite.getX() + pad, sprite.getY() + pad, w, h, 0, 0, false, false);
-                meta.sprites.add(new SpriteMeta(spriteEntry.getKey().toString(), sprite.getX(), sprite.getY(), w, h, 1, 0));
+                // copyRect(to, x, y, w, h, fromX, fromY, ...) bytecode
+                // (verified 2026-08-09): reads THIS at (x, y) with region
+                // size (fromX, fromY), writes into `to` at (w, h). So:
+                // source = sprite's own base image at (0,0), size (w, h);
+                // destination = the sprite's slot in the atlas canvas. The
+                // earlier version had the dest offset and region size
+                // swapped (dest = atlas coords, region 0x0), which made
+                // capture no-op: every captured blob was fully transparent,
+                // and hit boots silently rendered invisible sprites (the
+                // title-screen buttons bug). "Outside of image bounds" only
+                // appeared in the pre-fix version that targeted the small
+                // base image with atlas coords.
+                base.copyRect(canvas, 0, 0, sprite.getX() + pad, sprite.getY() + pad, w, h, false, false);
+                SpriteMeta sm = new SpriteMeta(spriteEntry.getKey().toString(), sprite.getX(), sprite.getY(), w, h, 1, 0);
+                if (contents.isAnimated()) {
+                    // Animated sprite: the base image is the full animation
+                    // strip (w x h*frames). It is stored as a separate strip
+                    // blob plus the original AnimationResourceMetadata so the
+                    // hit path can rebuild the identical SpriteContents
+                    // (SpriteContents ctor derives Animation from the
+                    // metadata via Optional.map, verified in bytecode). The
+                    // atlas slot holds only frame 0, so the strip can never
+                    // be reconstructed from the canvas.
+                    SpriteMeta.AnimMeta anim = sparrow_animMeta(contents);
+                    if (anim == null) {
+                        // Metadata not captured (defensive; the ctor capture
+                        // runs for every SpriteContents on the load thread):
+                        // abort this atlas entirely, a partial atlas would
+                        // corrupt the whole cache.
+                        throw new IllegalStateException("no animation metadata captured for " + sm.id);
+                    }
+                    sm.frameCount = sparrow_frameCount(base, w, h);
+                    sm.anim = anim;
+                    sm.frameTime = anim.defaultFrameTime;
+                    NativeImage strip = base; // full strip
+                    AtlasCache.writeStrip(meta.atlasId, sm, strip);
+                    sparrow_stripCount++;
+                }
+                meta.sprites.add(sm);
             }
             AtlasCache.writeBlob(meta.atlasId, canvas, meta.width, meta.height);
         } finally {
             canvas.close();
         }
         return meta;
+    }
+
+    /**
+     * Rebuilds the AnimationResourceMetadata that vanilla passed to the
+     * SpriteContents constructor from the ctor capture map. Null if the
+     * sprite's contents were never seen by the capture (should not happen:
+     * every sprite in this stitch was constructed on the load thread).
+     */
+    @Unique
+    private SpriteMeta.AnimMeta sparrow_animMeta(SpriteContents contents) {
+        SpriteAnimCapture.SpriteAnimMeta captured =
+                SpriteAnimCapture.take(contents);
+        if (captured == null) return null;
+        SpriteMeta.AnimMeta anim = new SpriteMeta.AnimMeta();
+        anim.interpolate = captured.interpolate;
+        anim.defaultFrameTime = captured.defaultFrameTime;
+        anim.width = captured.width;   // -1 = absent
+        anim.height = captured.height; // -1 = absent
+        if (captured.frames != null && !captured.frames.isEmpty()) {
+            anim.frames = new ArrayList<>();
+            for (AnimationFrameResourceMetadata frame : captured.frames) {
+                anim.frames.add(new SpriteMeta.FrameMeta(frame.index(),
+                        frame.time().orElse(-1)));
+            }
+        }
+        return anim;
+    }
+
+    /**
+     * Frame count of an animated strip, replicating vanilla's
+     * createAnimation math (SpriteContents bytecode offsets 0-21): the strip
+     * tiles into framesW x framesH = (imageW / dimsW) * (imageH / dimsH)
+     * frames. Same formula as the read-side strip validation.
+     */
+    @Unique
+    private int sparrow_frameCount(NativeImage strip, int w, int h) {
+        return (strip.getWidth() / w) * (strip.getHeight() / h);
     }
 
     /**
@@ -325,11 +422,39 @@ public abstract class AtlasCacheMixin {
         List<NativeImage> slices = new ArrayList<>();
         try {
             for (SpriteMeta sm : meta.sprites) {
-                NativeImage slice = new NativeImage(NativeImage.Format.RGBA, sm.w, sm.h, false);
-                slices.add(slice);
-                base.copyRect(slice, sm.x + pad, sm.y + pad, sm.w, sm.h, 0, 0, false, false);
-                SpriteContents contents = new SpriteContents(atlasId, new SpriteDimensions(sm.w, sm.h), slice,
-                        Optional.empty(), List.of(), Optional.empty());
+                NativeImage slice;
+                if (sm.frameCount > 1) {
+                    // Animated sprite: the strip blob holds the full
+                    // animation strip (w x h*frames) and the exact
+                    // AnimationResourceMetadata. Rebuild SpriteContents with
+                    // the metadata so the ctor's Optional.map path derives the
+                    // identical Animation (frames, times, interpolate).
+                    NativeImage strip = AtlasCache.readStrip(meta.atlasId, sm);
+                    if (strip == null) return null;
+                    slices.add(strip);
+                    slice = strip;
+                } else {
+                    slice = new NativeImage(NativeImage.Format.RGBA, sm.w, sm.h, false);
+                    slices.add(slice);
+                    // copyRect contract (see capture side): source = base at
+                    // the sprite's slot (x+pad, y+pad), size (w, h);
+                    // destination = the fresh slice at (0,0). The previous
+                    // form passed the slot coords as the DESTINATION offset
+                    // with region size 0x0, copying nothing (silent no-op,
+                    // no exception) -> transparent sprites -> the invisible
+                    // buttons bug (2026-08-09).
+                    base.copyRect(slice, sm.x + pad, sm.y + pad, 0, 0, sm.w, sm.h, false, false);
+                }
+                SpriteContents contents;
+                if (sm.frameCount > 1) {
+                    AnimationResourceMetadata animMeta = sparrow_animationMetadata(sm);
+                    if (animMeta == null) return null;
+                    contents = new SpriteContents(atlasId, new SpriteDimensions(sm.w, sm.h), slice,
+                            Optional.of(animMeta), List.of(), Optional.empty());
+                } else {
+                    contents = new SpriteContents(atlasId, new SpriteDimensions(sm.w, sm.h), slice,
+                            Optional.empty(), List.of(), Optional.empty());
+                }
                 // Same call vanilla's readyForUpload runnable makes; AUTO
                 // strategy + cutoff 0.0 match vanilla for sprites without
                 // blur/clamp mcmeta (the only sprite classes in the cache).
@@ -356,6 +481,27 @@ public abstract class AtlasCacheMixin {
         }
         return new SpriteLoader.StitchResult(meta.width, meta.height, mip, missing, sprites,
                 CompletableFuture.completedFuture(null));
+    }
+
+    /** Rebuilds the AnimationResourceMetadata stored in SpriteMeta. */
+    @Unique
+    private AnimationResourceMetadata sparrow_animationMetadata(SpriteMeta sm) {
+        Optional<List<AnimationFrameResourceMetadata>> frames = Optional.empty();
+        if (sm.anim != null && sm.anim.frames != null && !sm.anim.frames.isEmpty()) {
+            List<AnimationFrameResourceMetadata> list = new ArrayList<>();
+            for (SpriteMeta.FrameMeta f : sm.anim.frames) {
+                list.add(new AnimationFrameResourceMetadata(f.index,
+                        f.time < 0 ? Optional.empty() : Optional.of(f.time)));
+            }
+            frames = Optional.of(list);
+        }
+        int width = sm.anim == null ? -1 : sm.anim.width;
+        int height = sm.anim == null ? -1 : sm.anim.height;
+        return new AnimationResourceMetadata(frames,
+                width < 0 ? Optional.empty() : Optional.of(width),
+                height < 0 ? Optional.empty() : Optional.of(height),
+                sm.frameTime,
+                sm.anim != null && sm.anim.interpolate);
     }
 
     /**
@@ -404,11 +550,14 @@ public abstract class AtlasCacheMixin {
     }
 
     /**
-     * Session-once fingerprint: MC version, Sparrow build tag, atlas mip
-     * level, and one stamp per enabled pack (folder packs get one stamp per
-     * file; zip packs one CRC over the whole file; non-file packs are
-     * covered by version/build and get an id-only stamp). Folder mtime does
-     * not bump on in-place edits, hence per-file stamps for folders.
+     * Session-once fingerprint: MC version, atlas mip level, and one stamp
+     * per enabled pack (folder packs get one stamp per file; mod jars one
+     * stamp per resource entry from the zip central directory; non-file
+     * packs an id-only stamp). Folder mtime does not bump on in-place
+     * edits, hence per-file stamps for folders. No build tag: the tag
+     * changes on EVERY build (computeTagInfo counter) without touching
+     * atlas output, which made every rebuild a cache miss and a full
+     * re-capture ("always cache-miss", fixed 2026-08-09).
      */
     @Unique
     private CacheFingerprint sparrow_currentFingerprint() {
@@ -419,7 +568,7 @@ public abstract class AtlasCacheMixin {
         if (manager == null) return sparrow_fingerprint = null;
         try {
             CacheFingerprint fp = new CacheFingerprint(
-                    SharedConstants.getGameVersion().id(), BuildInfo.BUILD_TAG, mipmapLevels);
+                    SharedConstants.getGameVersion().id(), mipmapLevels);
             // Telemetry: profile count so a single-pack run is distinguishable
             // from a multi-pack run that failed mid-loop. Without this the
             // silent catch below makes every failure look identical.
@@ -481,10 +630,73 @@ public abstract class AtlasCacheMixin {
         // matching, so neither an Object-typed accessor nor an Object-typed
         // ctor-inject handler survives transform (both failed at runtime with
         // "Mixin transformation of ... failed", 2026-08-09). Reflection also
-        // fails (fields keep intermediary names at runtime). Consequence:
-        // zip packs get id-only stamps (cache invalidates whenever their set
-        // changes), which is safe, just not CRC-precise.
-        fp.addPack(new PackStamp(packId, "", 0, 0, 0));
+        // fails (fields keep intermediary names at runtime).
+        //
+        // But in practice NO mod pack reaches this branch: Fabric mod packs
+        // are ModNioPackResources and their pack id IS the mod id (verified
+        // in the game log: "pack sparrow-mod -> ModNioPackResources"). The
+        // jar is therefore resolvable through the FabricLoader by mod id, no
+        // pack internals needed.
+        Path jar = sparrow_findModJar(packId);
+        if (jar != null) {
+            sparrow_stampJar(fp, packId, jar.toFile());
+        } else {
+            fp.addPack(new PackStamp(packId, "", 0, 0, 0));
+        }
+    }
+
+    /** Resolves a pack id (which is the mod id for Fabric mod packs) to its
+     *  origin jar path, if the mod is file-backed. */
+    @Unique
+    private Path sparrow_findModJar(String packId) {
+        try {
+            for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
+                if (mod.getMetadata().getId().equals(packId)) {
+                    // getPaths() returns the origin jar path(s) for a
+                    // file-backed mod; nested/unknown origins return paths
+                    // that are not regular files and fall through below.
+                    for (Path path : mod.getOrigin().getPaths()) {
+                        if (path != null && Files.isRegularFile(path)) {
+                            return path;
+                        }
+                    }
+                    return null;
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            SparrowLogger.debug("AtlasCache: mod jar lookup failed for " + packId + ": " + e);
+            return null;
+        }
+    }
+
+    /** One stamp per resource entry, taken from the jar's zip central directory. */
+    @Unique
+    private void sparrow_stampJar(CacheFingerprint fp, String packId, File jar) {
+        try (ZipFile zip = new ZipFile(jar)) {
+            List<ZipEntry> entries = new ArrayList<>();
+            for (Enumeration<? extends ZipEntry> e = zip.entries(); e.hasMoreElements(); ) {
+                ZipEntry entry = e.nextElement();
+                if (entry.isDirectory()) continue;
+                String name = entry.getName();
+                if (name.startsWith("META-INF/") || name.endsWith(".class")) continue;
+                entries.add(entry);
+            }
+            // Sorted by entry name: the match order in the json must not
+            // depend on the zip writer's internal ordering, or an identical
+            // jar written by a different tool would spuriously miss.
+            entries.sort(java.util.Comparator.comparing(ZipEntry::getName));
+            for (ZipEntry entry : entries) {
+                // size 0 = entry CRC, in the same match semantics as the
+                // whole-file CRC for folder zips (see CacheFingerprint.matches).
+                fp.addPack(new PackStamp(packId + "/" + entry.getName(), jar.getPath(),
+                        entry.getSize(), 0, entry.getCrc()));
+            }
+        } catch (Exception e) {
+            // Unreadable jar: stamp id-only so the cache invalidates on the
+            // pack set changing (safe degradation, never a stale hit).
+            fp.addPack(new PackStamp(packId, "", 0, 0, 0));
+        }
     }
 
 }

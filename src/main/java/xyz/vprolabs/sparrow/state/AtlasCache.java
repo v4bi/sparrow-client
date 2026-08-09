@@ -44,6 +44,7 @@ public final class AtlasCache {
         public int x, y, w, h;     // UV rect within the atlas base image
         public int frameCount;     // animation frames (1 = static)
         public int frameTime;      // tick time per frame (0 for static)
+        public AnimMeta anim;      // animation metadata (null for static sprites)
 
         public SpriteMeta() { }    // Gson
 
@@ -55,6 +56,30 @@ public final class AtlasCache {
             this.h = h;
             this.frameCount = frameCount;
             this.frameTime = frameTime;
+        }
+
+        /** The AnimationResourceMetadata components of an animated sprite. */
+        public static final class AnimMeta {
+            public boolean interpolate;      // mcmeta interpolate flag
+            public int defaultFrameTime;     // mcmeta frametime (1 = every tick)
+            public int width;                // mcmeta width override, -1 = absent
+            public int height;               // mcmeta height override, -1 = absent
+            public List<FrameMeta> frames;   // explicit per-frame times, may be null
+
+            public AnimMeta() { }            // Gson
+        }
+
+        /** One explicit frame entry: index into the strip + its time (-1 = absent). */
+        public static final class FrameMeta {
+            public int index;
+            public int time;
+
+            public FrameMeta() { }           // Gson
+
+            public FrameMeta(int index, int time) {
+                this.index = index;
+                this.time = time;
+            }
         }
     }
 
@@ -78,6 +103,7 @@ public final class AtlasCache {
     private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static final byte[] MAGIC = {'S', 'P', 'A', 'R'};
+    private static final byte[] STRIP_MAGIC = {'S', 'P', 'S', 'T'};
     private static final int BLOB_VERSION = 1;
     // magic(4) + version(4) + width(4) + height(4) + crc32c(8)
     private static final int HEADER_BYTES = 24; // 4 magic + 4 version + 4 w + 4 h + 8 crc
@@ -246,7 +272,10 @@ public final class AtlasCache {
         }
     }
 
-    /** True iff every atlas declared in the cache has a blob file on disk. */
+    /**
+     * True iff every atlas declared in the cache has a blob file on disk,
+     * and every animated sprite declared has its strip blob.
+     */
     public static boolean allBlobsPresent(CacheData data) {
         // An empty atlas list is NOT a valid cache: a capture that recorded
         // nothing would otherwise validate trivially (loop over zero entries
@@ -259,8 +288,127 @@ public final class AtlasCache {
         for (AtlasMeta meta : data.atlases) {
             if (meta == null || meta.atlasId == null) return false;
             if (!Files.isRegularFile(blobPath(meta.atlasId))) return false;
+            for (SpriteMeta sm : meta.sprites) {
+                if (sm != null && sm.frameCount > 1) {
+                    // A missing strip blob must invalidate the whole cache:
+                    // a hit that silently dropped an animated sprite would
+                    // render a static, single-frame icon forever.
+                    if (!Files.isRegularFile(stripPath(meta.atlasId, sm.id))) return false;
+                }
+            }
         }
         return true;
+    }
+
+    /**
+     * Reads and validates the strip blob for an animated sprite. Null on ANY
+     * problem: missing file, wrong magic/version, size or CRC mismatch, dims
+     * that contradict cache.json, or any exception while filling the image.
+     */
+    public static NativeImage readStrip(String atlasId, SpriteMeta sm) {
+        Path file = stripPath(atlasId, sm.id);
+        if (!Files.isRegularFile(file)) return null;
+        byte[] bytes;
+        try {
+            bytes = Files.readAllBytes(file);
+        } catch (IOException e) {
+            return null;
+        }
+        if (bytes.length < HEADER_BYTES) return null;
+        if (bytes[0] != STRIP_MAGIC[0] || bytes[1] != STRIP_MAGIC[1]
+                || bytes[2] != STRIP_MAGIC[2] || bytes[3] != STRIP_MAGIC[3]) return null;
+        ByteBuffer header = ByteBuffer.wrap(bytes, 0, HEADER_BYTES).order(ByteOrder.BIG_ENDIAN);
+        int version = header.getInt(4);
+        int width = header.getInt(8);
+        int height = header.getInt(12);
+        long crc = header.getLong(16);
+        if (version != BLOB_VERSION) return null;
+        if (width <= 0 || height <= 0 || width > MAX_DIM || height > MAX_DIM) return null;
+        // The strip must tile exactly into frameCount frames of (sm.w x sm.h):
+        // vanilla's createAnimation slices framesW x framesH = frameCount from
+        // the strip (offsets 0-21 in bytecode), and animation strips can run
+        // vertically OR horizontally (mcmeta width/height overrides). A
+        // contradiction means the strip came from a different capture
+        // generation, and slicing it per the metadata would show wrong frames
+        // -> vanilla reload.
+        if (width % sm.w != 0 || height % sm.h != 0) return null;
+        if ((width / sm.w) * (height / sm.h) != sm.frameCount) return null;
+        // long math: a corrupt header must not overflow int and bypass the
+        // exact-size check (the only guard against a mismatched pixel block).
+        long expected = HEADER_BYTES + (long) width * height * 4;
+        if (bytes.length != expected) return null;
+        CRC32C crc32c = new CRC32C();
+        crc32c.update(bytes, HEADER_BYTES, bytes.length - HEADER_BYTES);
+        if (crc32c.getValue() != crc) return null;
+
+        NativeImage image = null;
+        try {
+            image = new NativeImage(NativeImage.Format.RGBA, width, height, false);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int o = HEADER_BYTES + (y * width + x) * 4;
+                    int argb = ((bytes[o + 3] & 0xFF) << 24)   // A
+                            | ((bytes[o] & 0xFF) << 16)        // R
+                            | ((bytes[o + 1] & 0xFF) << 8)     // G
+                            | (bytes[o + 2] & 0xFF);           // B
+                    image.setColorArgb(x, y, argb);
+                }
+            }
+            return image;
+        } catch (Exception e) {
+            if (image != null) image.close();
+            return null;
+        }
+    }
+
+    /**
+     * Writes the strip blob for an animated sprite. The strip is the sprite's
+     * full base image (w x h*frameCount). Temp + atomic move as for blobs.
+     */
+    public static void writeStrip(String atlasId, SpriteMeta sm, NativeImage strip) {
+        // The strip must tile exactly into frameCount frames of (sm.w x sm.h),
+        // matching the read-side validation (strips may run vertically OR
+        // horizontally via mcmeta overrides). A mismatch means a caller bug:
+        // skip rather than persist a blob that can never validate on read.
+        if (strip.getWidth() % sm.w != 0 || strip.getHeight() % sm.h != 0
+                || (strip.getWidth() / sm.w) * (strip.getHeight() / sm.h) != sm.frameCount) {
+            SparrowLogger.warn("AtlasCache: skipping strip " + sm.id + ": image is " + strip.getWidth()
+                    + "x" + strip.getHeight() + " but frame " + sm.w + "x" + sm.h
+                    + " x" + sm.frameCount + " frames");
+            return;
+        }
+        int[] argb = strip.copyPixelsArgb();
+        int count = strip.getWidth() * strip.getHeight();
+        byte[] rgba = new byte[count * 4];
+        for (int i = 0; i < count; i++) {
+            int c = argb[i];
+            int o = i * 4;
+            rgba[o] = (byte) (c >> 16);      // R
+            rgba[o + 1] = (byte) (c >> 8);   // G
+            rgba[o + 2] = (byte) c;          // B
+            rgba[o + 3] = (byte) (c >> 24);  // A
+        }
+        CRC32C crc = new CRC32C();
+        crc.update(rgba, 0, rgba.length);
+        ByteBuffer header = ByteBuffer.allocate(HEADER_BYTES).order(ByteOrder.BIG_ENDIAN);
+        header.put(STRIP_MAGIC);
+        header.putInt(BLOB_VERSION);
+        header.putInt(strip.getWidth());
+        header.putInt(strip.getHeight());
+        header.putLong(crc.getValue());
+        byte[] blob = new byte[HEADER_BYTES + rgba.length];
+        System.arraycopy(header.array(), 0, blob, 0, HEADER_BYTES);
+        System.arraycopy(rgba, 0, blob, HEADER_BYTES, rgba.length);
+        try {
+            Path dir = cacheDir();
+            Files.createDirectories(dir);
+            Path target = stripPath(atlasId, sm.id);
+            Path tmp = Files.createTempFile(dir, "strip", ".tmp");
+            Files.write(tmp, blob);
+            moveAtomic(tmp, target);
+        } catch (IOException e) {
+            SparrowLogger.warn("AtlasCache: failed to write strip " + sm.id + ": " + e.getMessage());
+        }
     }
 
     /** Blob file path for an atlas id. */
@@ -270,6 +418,13 @@ public final class AtlasCache {
         // layout (block.spa, item.spa). Colliding with a literal '_' id is
         // impossible in practice: every atlas id carries a "textures/" prefix.
         return cacheDir().resolve(atlasId.replace('/', '_') + BLOB_EXT);
+    }
+
+    /** Strip blob file path: atlas id + sprite id, both flattened. */
+    private static Path stripPath(String atlasId, String spriteId) {
+        // Same flattening as blobPath; a sprite id ("minecraft:block/water")
+        // keeps its ':' and '/' flattened so one flat dir holds everything.
+        return cacheDir().resolve(atlasId.replace('/', '_') + "__" + spriteId.replace('/', '_').replace(':', '_') + BLOB_EXT);
     }
 
     /** True iff the blob dims agree with the cache.json entry for the id. */

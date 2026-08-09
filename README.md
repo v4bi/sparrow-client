@@ -33,11 +33,12 @@ The tile grid adapts to your window: 4 columns on wide screens, fewer on small w
 ### Features
 
 <details open>
-<summary><b>⚡ Sparrow</b> (3)</summary>
+<summary><b>⚡ Sparrow</b> (4)</summary>
 
 - **UI** — choose what Right Shift opens: the Sparrow Menu (click GUI) or the legacy terminal.
 - **GUI FPS** — frame cap while the menu is open (5-240, default 60).
 - **GUI Scale** — scales menu elements; the panel always fills the screen (0.5-1.5).
+- **Theme** — Sparrow Menu palette: Default (Midnight Sakura, dark) or Hanami (light Japanese).
 
 </details>
 

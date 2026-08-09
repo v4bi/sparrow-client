@@ -274,7 +274,11 @@ public class ClickGuiScreen extends Screen {
         int iy = w.getY() + (w.getHeight() - iconW) / 2;
         boolean hover = mouseX >= ix && mouseX <= ix + iconW && mouseY >= iy && mouseY <= iy + iconW;
         Module m = moduleOf(w);
-        if (hover) ctx.fill(ix - 1, iy - 1, ix + iconW + 1, iy + iconW + 1, 0xAA2F2448);
+        // Hover ring follows the theme (was hardcoded 0xAA2F2448). Midnight
+        // ROW_BG_HOV is the exact same hue as the old ring; Hanami gets a
+        // warm paper halo. Opaque instead of translucent — reads cleaner on
+        // both light and dark panels.
+        if (hover) ctx.fill(ix - 1, iy - 1, ix + iconW + 1, iy + iconW + 1, Theme.ROW_BG_HOV);
         // Reset glyph drawn with rects, NOT a texture: the PNG refused to load at
         // runtime ("Missing resource") and a drawTexturedQuad with width/height
         // passed as x2/y2 painted a giant inverted black quad over the panel.
@@ -650,7 +654,11 @@ public class ClickGuiScreen extends Screen {
         // reset icon — no texture asset dependency.
         int cx = popupX + popupW - Math.round(20 * scale), cy = popupY + Math.round(6 * scale);
         boolean chov = mouseX >= cx && mouseX <= cx + 14 && mouseY >= cy && mouseY <= cy + 14;
-        ctx.fill(cx, cy, cx + 14, cy + 14, chov ? Theme.THUMB_BG : 0xFF241C38);
+        // Non-hover uses Theme.ROW_BG, not hardcoded 0xFF241C38: that dark
+        // plum square stayed dark in the light Hanami theme while the rest
+        // of the popup went paper-white (theme-blind color audit,
+        // 2026-08-10). Midnight ROW_BG (0xFF201830) is visually identical.
+        ctx.fill(cx, cy, cx + 14, cy + 14, chov ? Theme.THUMB_BG : Theme.ROW_BG);
         ctx.drawText(textRenderer, Text.literal("\u00d7"), cx + 3, cy + 2, chov ? Theme.DANGER : Theme.DIM, false);
 
         // v4: rows stack with per-row heights (sliders are two-line) and
@@ -743,7 +751,11 @@ public class ClickGuiScreen extends Screen {
         int y = mouseY + 10;
         if (x + w > width - 4) x = Math.max(4, mouseX - w - 12);
         if (y + h > height - 4) y = Math.max(4, mouseY - h - 10);
-        ctx.fill(x, y, x + w, y + h, 0xF0151026);
+        // Box = Theme.PANEL_BG (was hardcoded 0xF0151026 midnight plum —
+        // the tooltip ignored the theme, staying dark purple over the light
+        // Hanami GUI). Same translucent-panel look as the popup, so tooltips
+        // match their theme in both palettes.
+        ctx.fill(x, y, x + w, y + h, Theme.PANEL_BG);
         ctx.fill(x, y, x + 2, y + h, Theme.ACCENT);
         ctx.fill(x, y + h - 1, x + w, y + h, Theme.BORDER);
         ctx.drawText(textRenderer, Text.literal(title), x + pad, y + pad, Theme.ACCENT, false);
@@ -840,7 +852,14 @@ public class ClickGuiScreen extends Screen {
 
     private void paintChrome(DrawContext context) {
         context.fill(panelX, panelY, panelX + panelW, panelY + panelH, Theme.PANEL_BG);
-        context.fill(panelX, panelY, panelX + panelW, contentTop, Theme.TAB_BG);
+        // v4.2: fill ONLY the strip the tab buttons occupy (panelY..tabH).
+        // The old fill ran down to contentTop, painting the 12s spacing gap
+        // as a full-width TAB_BG band — a glaring near-white "bar" between
+        // the tabs and the grid in the Hanami theme. The gap now shows
+        // PANEL_BG, i.e. the panel's own background (user: "make it
+        // invisible, keep the background color"). The active-tab underline
+        // still anchors flush at panelY+tabH, so it is unaffected.
+        context.fill(panelX, panelY, panelX + panelW, panelY + tabH, Theme.TAB_BG);
         // Pink->violet gradient edge: the panel's identity line (fillGradient
         // is vertical top->bottom in 1.21.11; 2px wide, spans the panel).
         context.fillGradient(panelX, panelY, panelX + 2, panelY + panelH, Theme.ACCENT, Theme.ACCENT2);
@@ -1077,17 +1096,29 @@ public class ClickGuiScreen extends Screen {
                 Math.max(0, getWidth() - Math.round(6 * scale) - rightReserve - valueW - Math.round(6 * scale)),
                 Theme.FG, Theme.DIM);
             if (pill) {
-                boolean on = module.isEnabled();
-                int pillW = Math.round(30 * scale);
-                int pillH = Math.round(12 * scale);
-                int px = getRight() - rightInset() - pillW;
-                if (module.isComposite()) px -= Math.round(16 * scale); // gear room
-                int py = getY() + (getHeight() - pillH) / 2;
-                ctx.fill(px, py, px + pillW, py + pillH, on ? Theme.ON_BG : Theme.OFF_BG);
-                String label = on ? "ON" : "OFF";
-                int tw = textRenderer.getWidth(label);
-                ctx.drawText(textRenderer, Text.literal(label),
-                    px + (pillW - tw) / 2, py + 2, on ? Theme.ON_TEXT : Theme.DIM, false);
+                if (module.isLocked()) {
+                    // BUGGY badge (2026-08-10): locked modules render a red
+                    // warning tag instead of the ON/OFF pill — the user must
+                    // SEE that the feature is broken, not just un-toggleable.
+                    String tag = "BUGGY";
+                    int tw = textRenderer.getWidth(tag);
+                    int px = getRight() - rightInset() - tw;
+                    if (module.isComposite()) px -= Math.round(16 * scale); // gear room
+                    ctx.drawText(textRenderer, Text.literal(tag), px, getY() + (getHeight() - 8) / 2,
+                        Theme.ERR, false);
+                } else {
+                    boolean on = module.isEnabled();
+                    int pillW = Math.round(30 * scale);
+                    int pillH = Math.round(12 * scale);
+                    int px = getRight() - rightInset() - pillW;
+                    if (module.isComposite()) px -= Math.round(16 * scale); // gear room
+                    int py = getY() + (getHeight() - pillH) / 2;
+                    ctx.fill(px, py, px + pillW, py + pillH, on ? Theme.ON_BG : Theme.OFF_BG);
+                    String label = on ? "ON" : "OFF";
+                    int tw = textRenderer.getWidth(label);
+                    ctx.drawText(textRenderer, Text.literal(label),
+                        px + (pillW - tw) / 2, py + 2, on ? Theme.ON_TEXT : Theme.DIM, false);
+                }
             } else {
                 ctx.drawText(textRenderer, Text.literal(val),
                     getRight() - rightInset() - valueW - Math.round(6 * scale),
@@ -1107,6 +1138,9 @@ public class ClickGuiScreen extends Screen {
 
         @Override
         public void onClick(Click click, boolean bl) {
+            // LOCK-1 (2026-08-10): BUGGY-locked modules are dead — no toggle,
+            // no popup. Module.setEnabled also refuses, this is belt & braces.
+            if (module.isLocked()) return;
             if (module.isComposite()) {
                 // Gear or right-click = settings; LEFT click on the tile body
                 // flips the master toggle (the parent REALLY gates the feature,
@@ -1150,6 +1184,17 @@ public class ClickGuiScreen extends Screen {
             // configuration is invisible", 2026-08-09).
             drawTruncated(ctx, getMessage().getString(), getX() + 6, getY() + (rowH - 8) / 2,
                 Math.max(0, getWidth() - Math.round(30 * scale) - Math.round(12 * scale)), Theme.FG);
+            if (module.isLocked()) {
+                // BUGGY tag in place of the ON/OFF pill (2026-08-10): locked
+                // modules are always OFF and cannot be toggled; the red tag
+                // says why the pill is missing.
+                String tag = "BUGGY";
+                int tw = textRenderer.getWidth(tag);
+                int px = getRight() - tw - Math.round(6 * scale);
+                ctx.drawText(textRenderer, Text.literal(tag), px, getY() + (rowH - 8) / 2,
+                    Theme.ERR, false);
+                return;
+            }
             boolean on = module.isEnabled();
             int pillW = Math.round(30 * scale);
             int pillH = Math.round(12 * scale);
@@ -1164,6 +1209,8 @@ public class ClickGuiScreen extends Screen {
 
         @Override
         public void onClick(Click click, boolean bl) {
+            // LOCK-1 (2026-08-10): BUGGY-locked modules are dead in popups too.
+            if (module.isLocked()) return;
             module.setEnabled(!module.isEnabled());
         }
 

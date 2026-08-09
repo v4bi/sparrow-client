@@ -1,5 +1,6 @@
 package xyz.vprolabs.sparrow.module;
 
+import xyz.vprolabs.sparrow.gui.Theme;
 import xyz.vprolabs.sparrow.tweaks.SparrowGlintLayers;
 import xyz.vprolabs.sparrow.tweaks.SparrowZoomState;
 
@@ -34,6 +35,13 @@ public final class ModuleHooks {
             // made the PARENT id; the parent's setEnabled would then zero
             // targetZoom through value()==0. The case must follow the leaf.)
             SparrowZoomState.targetZoom = m.value();
+        }
+        case "theme" -> {
+            // Switch the GUI palette live (2026-08-10). Fires from every
+            // entry point: GUI cycle row, console `sparrow theme hanami`,
+            // and config load (applyToModules -> setStringValue -> here),
+            // so the saved theme is in effect before the menu first opens.
+            Theme.apply(m.stringValue());
         }
         case "crosshair-color" -> {
             // Console contract (FeatureRegistry.setCrosshairColor): setting

@@ -69,6 +69,14 @@ public final class Module {
     // Hover description shown in the click GUI tooltip. NULL = no tooltip.
     private String description;
 
+    // BUGGY LOCK (2026-08-10): the atlas-cache feature renders invisible
+    // sprites on cache-hit boots, root cause not yet found. A locked module
+    // can NEVER be enabled: setEnabled(true) is coerced back to false at the
+    // lowest layer, so every path (GUI tile, popup row, console command,
+    // config load, reset) is blocked in one place. The GUI paints a red
+    // "BUGGY" badge instead of the ON/OFF pill and the console refuses.
+    private volatile boolean locked;
+
     // Toggle module
     public Module(String id, String category, boolean defaultEnabled) {
         this(id, category, defaultEnabled, false, false, 0, 0, 0, 1, false, false, null, null, null);
@@ -194,6 +202,19 @@ public final class Module {
         return this;
     }
 
+    /** Fluent: lock this module as BUGGY. Forced off at construction and
+     *  impossible to enable from any surface (see the locked field comment).
+     *  Chain AFTER the default-enabled arg, e.g.
+     *  {@code new Module("atlas-cache", "Experimental", false).withLocked()}. */
+    public Module withLocked() {
+        this.locked = true;
+        this.enabled = false;
+        return this;
+    }
+
+    /** True when the module is locked as broken (BUGGY badge, no toggling). */
+    public boolean isLocked() { return locked; }
+
     /** True when this module is a color (see withColor()). */
     public boolean isColor() { return color; }
 
@@ -203,6 +224,9 @@ public final class Module {
     /** True when the module currently holds its factory default — the GUI
      *  dims the Reset icon for rows that have nothing to reset. */
     public boolean isAtDefault() {
+        // Locked modules are always "at default": they can never deviate
+        // (always off), so the Reset icon must stay dimmed.
+        if (locked) return true;
         if (composite) {
             for (Module c : children.values()) {
                 if (!c.isAtDefault()) return false;
@@ -229,6 +253,10 @@ public final class Module {
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean v) {
+        // LOCK-1: locked modules cannot be enabled, from ANY caller. Coerce
+        // to false so a stale modules.json, a GUI click or a console command
+        // can never turn the broken feature on (2026-08-10).
+        if (locked) v = false;
         if (this.enabled == v) return;
         this.enabled = v;
         ModuleHooks.onChanged(this);

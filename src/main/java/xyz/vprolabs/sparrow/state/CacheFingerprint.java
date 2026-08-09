@@ -12,10 +12,10 @@ import java.util.List;
  * them, which defeats the cache entirely.
  *
  * A fingerprint is a list of per-pack stamps plus the invariants that
- * change atlas output without touching pack files (Minecraft version,
- * Sparrow build tag, mipmap level). Two fingerprints equal -> the cached
- * atlases are byte-identical to what a fresh vanilla reload would produce,
- * so the reload can be skipped.
+ * change atlas output without touching pack files (Minecraft version and
+ * mipmap level). Two fingerprints equal -> the cached atlases are
+ * byte-identical to what a fresh vanilla reload would produce, so the
+ * reload can be skipped.
  *
  * Pack stamp semantics (built by AtlasCacheMixin, this class only
  * compares):
@@ -24,8 +24,21 @@ import java.util.List;
  *  - Folder packs: ONE stamp per file inside the pack (id = packId + "/" +
  *    relative path, size + mtime). Directory mtime does NOT bump on
  *    in-place byte edits, so per-file stamps are required for folders.
- *  - Non-file packs (vanilla jar, mod jars): an id-only stamp with size 0;
- *    those are already covered by mcVersion/buildTag.
+ *  - Mod jars (ModNioPackResources): ONE stamp per RESOURCE ENTRY, taken
+ *    from the jar's zip central directory (name, size, crc). META-INF and
+ *    .class entries are excluded: the manifest carries the per-build
+ *    Build-Tag, which changes on every build without touching atlas output,
+ *    and classes never affect textures. This replaced the buildTag
+ *    fingerprint component (2026-08-09): the old tag-based stamp made every
+ *    rebuild a cache miss and a re-capture ("always cache-miss").
+ *  - Non-file packs (vanilla jar, unknown mod origins): an id-only stamp
+ *    with size 0; vanilla is covered by mcVersion, unknown origins are a
+ *    documented residual risk (mod content changes would not invalidate).
+ *
+ * Legacy note: pre-2026-08-09 fingerprints carried a buildTag field. The
+ * field is dropped from this class; Gson ignores the stale JSON field and
+ * the remaining components (mcVersion, mip, packs) still compare, so old
+ * caches remain valid.
  */
 public final class CacheFingerprint {
 
@@ -48,7 +61,6 @@ public final class CacheFingerprint {
     }
 
     public String mcVersion;
-    public String buildTag;
     public int mipLevels;
     public List<PackStamp> packs = new ArrayList<>();
 
@@ -56,9 +68,8 @@ public final class CacheFingerprint {
 
     public CacheFingerprint() { } // Gson
 
-    public CacheFingerprint(String mcVersion, String buildTag, int mipLevels) {
+    public CacheFingerprint(String mcVersion, int mipLevels) {
         this.mcVersion = mcVersion;
-        this.buildTag = buildTag;
         this.mipLevels = mipLevels;
     }
 
@@ -66,12 +77,11 @@ public final class CacheFingerprint {
         packs.add(stamp);
     }
 
-    /** Two fingerprints match iff version, build, mip level AND every pack
+    /** Two fingerprints match iff version, mip level AND every pack
      *  stamp (id, path, size, mtime, crc) are identical, in the same order. */
     public boolean matches(CacheFingerprint other) {
         if (other == null) return false;
         if (!mcVersion.equals(other.mcVersion)) return false;
-        if (!buildTag.equals(other.buildTag)) return false;
         if (mipLevels != other.mipLevels) return false;
         if (packs.size() != other.packs.size()) return false;
         for (int i = 0; i < packs.size(); i++) {

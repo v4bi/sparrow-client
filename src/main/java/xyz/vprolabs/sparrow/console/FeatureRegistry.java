@@ -35,6 +35,23 @@ public final class FeatureRegistry {
 
 	private FeatureRegistry() {}
 
+	// ── Locked (BUGGY) command factory ────────────────────────────────
+
+	// LOCK-1 (2026-08-10): a BUGGY-locked module gets a stub command that
+	// REFUSES to toggle. Without this, `sparrow atlas-cache on` would print a
+	// lying "ON" (Module.setEnabled coerces true back to false silently).
+	private static void registerLockedCmd(String name) {
+		SparrowConsoleCommand.register(name, new SparrowConsoleCommand.Command() {
+			@Override public String execute(String[] args) {
+				return "\u00a7c" + name + " is BUGGY and locked: cannot be toggled, sorry";
+			}
+			@Override public String getDescription() { return "Toggle " + name + " (locked: BUGGY)"; }
+			@Override public List<String> tabComplete(String[] args) {
+				return Collections.emptyList();
+			}
+		});
+	}
+
 	// ── Standalone toggle command factory ──────────────────────────────
 
 	private static void registerToggleCmd(String name,
@@ -140,7 +157,14 @@ public final class FeatureRegistry {
 			if (groupedNames.contains(m.id())) continue;
 			if (m.isComposite()) continue; // composite parents get a grouped command below
 			if (m.isToggleable()) {
-				registerToggleCmd(m.id(), m::isEnabled, m::setEnabled);
+				// LOCK-1 (2026-08-10): BUGGY-locked modules get a refusing
+				// stub instead of a toggle so the console can never lie or
+				// flip the broken feature on.
+				if (m.isLocked()) {
+					registerLockedCmd(m.id());
+				} else {
+					registerToggleCmd(m.id(), m::isEnabled, m::setEnabled);
+				}
 			} else if (m.isNumeric()) {
 				if (m.isInteger()) {
 					if (m.id().equals("console-fps")) {
