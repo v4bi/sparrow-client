@@ -3,6 +3,7 @@ package xyz.vprolabs.sparrow.gui;
 import xyz.vprolabs.sparrow.module.Module;
 import xyz.vprolabs.sparrow.module.ModuleManager;
 import xyz.vprolabs.sparrow.module.Modules;
+import xyz.vprolabs.sparrow.tweaks.SparrowSounds;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
@@ -359,6 +360,9 @@ public class ClickGuiScreen extends Screen {
                             // caret (1.21.11 TextFieldWidget API).
                             popupFocused = w;
                             w.onClick(click, bl);
+                        } else if (w instanceof PlaySoundRow) {
+                            popupFocused = null;
+                            w.onClick(click, bl);
                         }
                         return true;
                     }
@@ -571,6 +575,18 @@ public class ClickGuiScreen extends Screen {
             }
             else w = new HexField(c); // free-form string: hex field, like the main grid
             popupRows.add(w);
+        }
+        // Test-play button for the death sound popup (2026-08-10 user spec):
+        // "add a button, which is a Sound icon... plays the Short or Full sound
+        // whichever I have currently selected". Only the death-sound composite
+        // has variant+volume children that SparrowSounds can play; the row is
+        // rebuilt with the popup, so it always reads the CURRENT values.
+        if ("death-sound".equals(popupModule.id())) {
+            Module variant = popupModule.child("death-sound-variant");
+            Module volume = popupModule.child("death-sound-volume");
+            if (variant != null && volume != null) {
+                popupRows.add(new PlaySoundRow(variant, volume));
+            }
         }
     }
 
@@ -1329,7 +1345,52 @@ public class ClickGuiScreen extends Screen {
         protected void appendClickableNarrations(NarrationMessageBuilder builder) { }
     }
 
-    // ── RGB color picker (v4.2, 2026-08-09 user spec) ───────────────────
+    // ── Death sound test button (v4.3, 2026-08-10 user spec) ───────────
+    //
+    // Plays the currently selected death-sound variant at the current
+    // volume, so the sound can be auditioned without dying. The speaker
+    // glyph is drawn with rects like the reset icon — zero texture asset
+    // dependency (the reset.png lesson: a missing texture painted a giant
+    // black quad, so UI icons are rect-drawn, period).
+    private final class PlaySoundRow extends ClickableWidget {
+        private final Module variant;
+        private final Module volume;
+
+        PlaySoundRow(Module variant, Module volume) {
+            super(0, 0, 300, rowH, Text.literal("Test sound"));
+            this.variant = variant;
+            this.volume = volume;
+        }
+
+        @Override
+        protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+            int bg = isHovered() ? Theme.ROW_BG_HOV : Theme.ROW_BG;
+            ctx.fill(getX(), getY(), getRight(), getBottom(), bg);
+            int ix = getX() + Math.round(6 * scale);
+            int iy = getY() + (getHeight() - iconW) / 2;
+            int c = isHovered() ? Theme.ACCENT : Theme.FG;
+            // Speaker: box + cone, then two sound waves.
+            ctx.fill(ix + 0, iy + 5, ix + 5, iy + 11, c);
+            ctx.fill(ix + 5, iy + 3, ix + 7, iy + 13, c);
+            ctx.fill(ix + 9, iy + 6, ix + 10, iy + 10, c);
+            ctx.fill(ix + 11, iy + 4, ix + 12, iy + 12, c);
+            String label = "Test sound (" + variant.displayOption(variant.stringValue()) + ")";
+            ctx.drawText(textRenderer, Text.literal(label),
+                ix + Math.round(16 * scale), getY() + (getHeight() - 8) / 2, c, false);
+        }
+
+        @Override
+        public void onClick(Click click, boolean bl) {
+            // Volume module is 1-100 (double), SparrowSounds wants linear
+            // 0.0-1.0 — scale at call time so the button always matches the
+            // slider the user just dragged.
+            SparrowSounds.playDeath(variant.stringValue(),
+                (float) (volume.value() / 100.0));
+        }
+
+        @Override
+        protected void appendClickableNarrations(NarrationMessageBuilder builder) { }
+    }
     //
     // A color is either a hex STRING module (crosshair-color: "rrggbb") or a
     // COMPOSITE of three 0-255 numeric children (glint: glint-r/g/b). Both

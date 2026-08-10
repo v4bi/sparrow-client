@@ -53,6 +53,8 @@
         "Tweaks.ViewModelMixin",
         "Tweaks.ZoomMixin",
         "Tweaks.DeathSoundMixin",
+        "Tweaks.SoundOverrideMixin",
+        "Tweaks.DeathScreenMixin",
         "Optimization.Cull.BeaconBeamCullMixin",
         "Tweaks.BlockBreakOverlayMixin",
         "Optimization.Render.CloudRenderKillMixin",

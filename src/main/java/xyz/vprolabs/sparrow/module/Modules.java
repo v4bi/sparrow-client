@@ -99,6 +99,10 @@ public final class Modules {
         "hit", "abletohit")
         .withDescription("When the player-hit indicator shows: only when you're able to hit, or always.");
     public static final Module playerHitColor   = new Module("player-hit-color", "Visual", "ff0000")
+        .withColor() // RGB picker in the player-hit popup (2026-08-10): same
+                     // swatch + channel sliders as crosshair-color/glint.
+                     // Without this the popup fell back to a bare HexField,
+                     // the only hex selector left without the picker.
         .withDescription("Hex color (RRGGBB) of the player-hit indicator.");
     // Player-hit panel (2026-08-02): one GUI row opening a popup with the
     // toggle + type + color. The composite id reuses "player-hit"; the old
